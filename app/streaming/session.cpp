@@ -47,12 +47,24 @@
 // 106 is SDL_CODE_STEAM_CONTROLLER_LINK (input/steamcontroller/steamcontrollerhost.h)
 #define SDL_CODE_APOLLO_CLIPBOARD 107
 
-// 400 us sleep for the 2500 Hz controller polling loop
+// Sleep between event-queue polls (2500 Hz by default). DECKVOID_POLL_US
+// overrides it for tests: 100..10000 us, or 0 to block in SDL_WaitEventTimeout.
+static int pollIntervalUs()
+{
+    static int us = -1;
+    if (us < 0) {
+        bool ok = false;
+        const int v = qEnvironmentVariableIntValue("DECKVOID_POLL_US", &ok);
+        us = (ok && v == 0) ? 0 : (ok && v >= 100 && v <= 10000) ? v : 400;
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Event poll interval: %d us%s", us, us == 0 ? " (wait for events)" : "");
+    }
+    return us;
+}
 #ifdef Q_OS_WIN32
 static inline void sleepForControllerPoll() { SDL_Delay(1); }
 #else
 #include <unistd.h>
-static inline void sleepForControllerPoll() { usleep(400); }
+static inline void sleepForControllerPoll() { usleep(pollIntervalUs()); }
 #endif
 
 #include <openssl/rand.h>
@@ -2437,17 +2449,17 @@ void Session::exec()
         // NB: This behavior was introduced in SDL 2.0.16, but had a few critical
         // issues that could cause indefinite timeouts, delayed joystick detection,
         // and other problems.
-        // With a controller connected SDL reads it by polling every 1 ms.
-        // !ink polls every 400 us instead (2500 Hz). Without a controller,
-        // waiting for events is kept: a mouse movement wakes the loop at once.
-        if (SDL_NumJoysticks() > 0) {
-            if (!SDL_PollEvent(&event)) {
-                sleepForControllerPoll();
+        // !ink polls the event queue every 400 us (2500 Hz) for every input
+        // device, mouse included, instead of SDL's 1 ms controller polling or
+        // blocking in SDL_WaitEventTimeout.
+        if (pollIntervalUs() == 0) {
+            if (!SDL_WaitEventTimeout(&event, 1000)) {
                 presence.runCallbacks();
                 continue;
             }
         }
-        else if (!SDL_WaitEventTimeout(&event, 1000)) {
+        else if (!SDL_PollEvent(&event)) {
+            sleepForControllerPoll();
             presence.runCallbacks();
             continue;
         }

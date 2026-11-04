@@ -106,13 +106,17 @@ so it sits next to stock Moonlight. PCs paired in Moonlight aren't carried over.
 
 ### Updating
 
-Repeat step 4, then:
+!ink updates itself. It checks for a newer build when it starts and every
+6 hours after that; when one is published, an **Update to …** line appears at
+the top of the PCs screen. Select it and !ink downloads the build, installs it
+and restarts. In Gaming Mode it quits instead, so start it again from your
+Library to finish. Your settings and paired PCs are kept.
+
+To update by hand, repeat step 4, then:
 
 ```sh
 flatpak install --user -y --reinstall ~/Downloads/DeckVoid-x86_64.flatpak
 ```
-
-Your settings and paired PCs are kept.
 
 ### Uninstalling
 
