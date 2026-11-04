@@ -64,3 +64,34 @@ jobs:
     with:
       ci_version: ${{ needs.setup.outputs.ci_version }}
       source_ref: ${{ github.sha }}
+
+  # Publish every main build as the "Latest Steam Deck build" release, with a
+  # fixed file name, so it can be downloaded on the Deck without a GitHub login:
+  # https://github.com/oaa20203-source/deckvoid/releases/latest/download/DeckVoid-x86_64.flatpak
+  publish-deck-build:
+    needs: [setup, build-flatpak]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: DeckVoid-Flatpak-${{ needs.setup.outputs.ci_version }}
+      - name: Update the latest-build release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          CI_VERSION: ${{ needs.setup.outputs.ci_version }}
+        run: |
+          cp "DeckVoid-$CI_VERSION-x86_64.flatpak" DeckVoid-x86_64.flatpak
+          notes="Steam Deck build $CI_VERSION from commit ${GITHUB_SHA}. Install instructions: https://github.com/${GH_REPO}#install-on-steam-deck"
+          if gh release view latest-build >/dev/null 2>&1; then
+            # Move the tag to this commit so the release matches the file
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest-build" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit latest-build --title "Latest Steam Deck build ($CI_VERSION)" --notes "$notes" --latest
+          else
+            gh release create latest-build --target "$GITHUB_SHA" --title "Latest Steam Deck build ($CI_VERSION)" --notes "$notes" --latest
+          fi
+          gh release upload latest-build DeckVoid-x86_64.flatpak --clobber
