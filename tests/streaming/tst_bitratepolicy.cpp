@@ -88,6 +88,43 @@ private slots:
         QCOMPARE(clean(s, 80), 84000);
     }
 
+    void repeatedCutsDoubleTheWaitBeforeProbingAgain()
+    {
+        auto s = fresh();
+        s.currentKbps = BitratePolicy::decide(s, 27, 43);   // 1st cut: 63000, cap 75500
+        clean(s, 16);                                        // back at the cap
+        clean(s, 44);                                        // 60 clean windows: lifted to 81500
+        QCOMPARE(s.currentKbps, 81500);
+        s.currentKbps = BitratePolicy::decide(s, 40, 30);   // 2nd cut: the probe failed
+        QCOMPARE(s.currentKbps, 61000);
+        QCOMPARE(s.capKbps, 73500);
+        clean(s, 16);                                        // 61000 -> 66000 -> 71500 -> 73500
+        QCOMPARE(s.currentKbps, 73500);
+        QCOMPARE(clean(s, 103), 73500);                      // 119 clean windows since the cut: still waiting
+        QCOMPARE(clean(s, 1), 79500);                        // 120th: lifted (60 s, not 30 s)
+        s.currentKbps = BitratePolicy::decide(s, 40, 30);   // 3rd cut
+        QCOMPARE(s.capLiftWaitTicks, 240);                   // 120 s now
+    }
+
+    void waitGoesBackToThirtySecondsOnceTheCeilingHolds()
+    {
+        auto s = fresh();
+        s.currentKbps = BitratePolicy::decide(s, 27, 43);
+        s.currentKbps = BitratePolicy::decide(s, 40, 30);    // ignored: hold
+        clean(s, 4);                                         // hold over
+        s.currentKbps = BitratePolicy::decide(s, 40, 30);    // 2nd cut -> wait 120 ticks
+        QCOMPARE(s.capLiftWaitTicks, 120);
+        // Climb all the way back: ramp to cap, 120 clean at the cap, lift, ... until 84000
+        for (int i = 0; i < 2000 && s.currentKbps < 84000; i++) {
+            clean(s, 1);
+        }
+        QCOMPARE(s.currentKbps, 84000);
+        QCOMPARE(s.capLiftWaitTicks, 120);                   // not reset yet
+        clean(s, 60);                                        // 30 s at the ceiling
+        QCOMPARE(s.capLiftWaitTicks, 60);
+        QCOMPARE(s.cutsSinceReset, 0);
+    }
+
     void lossAfterRecoveryResetsTheCleanCount()
     {
         auto s = fresh();

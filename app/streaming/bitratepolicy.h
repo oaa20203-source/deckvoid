@@ -17,6 +17,9 @@
 // - After 4 s of clean windows the bitrate climbs 8% every 2 s, up to the cap.
 // - The cap lifts by one 8% step after 30 s of clean windows at the cap, so a link
 //   that failed at a bitrate is probed again slowly instead of every few seconds.
+// - Every further cut doubles that wait (60 s, 120 s, ... up to 5 min): a link that
+//   keeps failing the same probe is probed less and less often. The wait goes back to
+//   30 s once the stream has sat at the user's bitrate for 30 clean seconds.
 class BitratePolicy
 {
 public:
@@ -31,6 +34,8 @@ public:
         int cleanTicks = 0;             // consecutive clean, full windows
         int ticksSinceChange = 0;
         int holdTicks = 0;              // windows left in which loss is ignored
+        int capLiftWaitTicks = 0;       // clean windows needed at the cap before it lifts
+        int cutsSinceReset = 0;         // cuts since the stream last held the ceiling
     };
 
     static State initial(int ceilingKbps, int fps);

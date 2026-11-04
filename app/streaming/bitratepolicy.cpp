@@ -18,8 +18,10 @@ constexpr int kHoldTicks = 4;
 constexpr int kCleanTicksBeforeRamp = 8;    // 4 s
 constexpr int kRampEveryTicks = 4;          // 2 s
 constexpr double kRampFactor = 1.08;
-// Clean windows at the cap before the cap lifts by one ramp step (30 s)
+// Clean windows at the cap before the cap lifts by one ramp step (30 s); each
+// further cut doubles it, up to kMaxCapRaiseTicks (5 min)
 constexpr int kCleanTicksBeforeCapRaise = 60;
+constexpr int kMaxCapRaiseTicks = 600;
 // Never go below this share of the user's bitrate, or below 10 Mbps
 constexpr double kFloorShare = 0.35;
 constexpr int kAbsoluteFloorKbps = 10000;
@@ -38,6 +40,7 @@ BitratePolicy::State BitratePolicy::initial(int ceilingKbps, int fps)
     s.capKbps = ceilingKbps;
     s.floorKbps = std::max(kAbsoluteFloorKbps, roundKbps(ceilingKbps * kFloorShare));
     s.expectedFramesPerWindow = std::max(0, fps) * kTickMs / 1000;
+    s.capLiftWaitTicks = kCleanTicksBeforeCapRaise;
     return s;
 }
 
@@ -63,6 +66,10 @@ int BitratePolicy::decide(State& s, uint32_t received, uint32_t dropped)
         }
         s.capKbps = std::max(s.floorKbps, roundKbps(s.currentKbps * kCapFactor));
         s.holdTicks = kHoldTicks;
+        // The first cut keeps the 30 s wait; each one after it doubles the wait
+        if (s.cutsSinceReset++ > 0) {
+            s.capLiftWaitTicks = std::min(kMaxCapRaiseTicks, s.capLiftWaitTicks * 2);
+        }
         const int next = std::max(s.floorKbps, roundKbps(s.currentKbps * kBackoffFactor));
         if (next < s.currentKbps) {
             s.ticksSinceChange = 0;
@@ -89,8 +96,14 @@ int BitratePolicy::decide(State& s, uint32_t received, uint32_t dropped)
         s.ticksSinceChange = 0;
         return std::min(s.capKbps, roundKbps(s.currentKbps * kRampFactor));
     }
-    if (s.capKbps < s.ceilingKbps && s.cleanTicks >= kCleanTicksBeforeCapRaise) {
-        // Probe one step above the bitrate that failed, then wait another 30 s
+    if (s.currentKbps >= s.ceilingKbps && s.cleanTicks >= kCleanTicksBeforeCapRaise) {
+        // The link carries the user's bitrate again: probe at the normal pace next time
+        s.capLiftWaitTicks = kCleanTicksBeforeCapRaise;
+        s.cutsSinceReset = 0;
+        return s.currentKbps;
+    }
+    if (s.capKbps < s.ceilingKbps && s.cleanTicks >= s.capLiftWaitTicks) {
+        // Probe one step above the bitrate that failed, then wait again
         s.capKbps = std::min(s.ceilingKbps, roundKbps(s.capKbps * kRampFactor));
         s.cleanTicks = 0;
         s.ticksSinceChange = 0;
