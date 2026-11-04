@@ -1,4 +1,5 @@
 #include "appmodel.h"
+#include <algorithm>
 #include "backend/apollo/apollolaunchverb.h"
 #include "settings/streamingpreferences.h"
 
@@ -277,29 +278,31 @@ void AppModel::updateAppList(QVector<NvApp> newList)
         }
     }
 
-    // Process additions now
-    for (const NvApp& newApp : std::as_const(newVisibleList)) {
-        int insertionIndex = m_VisibleApps.size();
+    // Process additions now. The new list is already in display order (host order
+    // on Apollo hosts, name order otherwise), so insert each app at its position there.
+    for (int j = 0; j < newVisibleList.count(); j++) {
+        const NvApp& newApp = newVisibleList.at(j);
         bool found = false;
-
-        for (int i = 0; i < m_VisibleApps.count(); i++) {
-            const NvApp& existingApp = m_VisibleApps.at(i);
-
+        for (const NvApp& existingApp : std::as_const(m_VisibleApps)) {
             if (existingApp.id == newApp.id) {
                 found = true;
-                break;
-            }
-            else if (existingApp.name.toLower() > newApp.name.toLower()) {
-                insertionIndex = i;
                 break;
             }
         }
 
         if (!found) {
+            const int insertionIndex = std::min(j, (int)m_VisibleApps.size());
             beginInsertRows(QModelIndex(), insertionIndex, insertionIndex);
             m_VisibleApps.insert(insertionIndex, newApp);
             endInsertRows();
         }
+    }
+
+    // The host can reorder apps that are already shown; fall back to a reset then.
+    if (m_VisibleApps != newVisibleList) {
+        beginResetModel();
+        m_VisibleApps = newVisibleList;
+        endResetModel();
     }
 
     Q_ASSERT(newVisibleList == m_VisibleApps);

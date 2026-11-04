@@ -399,7 +399,7 @@ CenteredGridView {
                 Layout.fillWidth: true
                 placeholderText: qsTr("4-digit PIN")
                 inputMethodHints: Qt.ImhDigitsOnly
-                validator: RegularExpressionValidator { regularExpression: /[0-9]{0,4}/ }
+                validator: IntValidator { bottom: 0; top: 9999 }
                 maximumLength: 4
                 KeyNavigation.down: otpPassphraseField
             }
