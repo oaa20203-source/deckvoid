@@ -15,9 +15,9 @@ ComboBox {
     // Keep the menu opaque, including software-rendered Qt Quick previews.
     // The Material elevation layer can otherwise hide the menu background.
     popup.background: Rectangle {
-        color: Theme.surface
-        radius: 12
-        border.color: Theme.lineStrong
+        color: Theme.bone
+        radius: Theme.radiusControl
+        border.color: Theme.ink
     }
 
     TextMetrics {

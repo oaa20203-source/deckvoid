@@ -39,17 +39,15 @@ Flickable {
 
     // DeckVoid layout: category sidebar on the left, a fixed header with the
     // category title and preset chips, and the selected category's cards below.
-    property string category: "stream"
+    property string category: "video"
     readonly property int sidebarWidth: 260
     readonly property int headerHeight: Theme.mouseMode ? 76 : 92
     readonly property var footerHints: [["‹›", qsTr("Adjust")], ["A", qsTr("Select")], ["B", qsTr("Back")]]
     readonly property var categories: [
-        ["stream", qsTr("Stream")],
-        ["host", qsTr("Host display")],
-        ["controls", qsTr("Controls")],
-        ["haptics", qsTr("Haptics")],
-        ["overlay", qsTr("Overlay")],
-        ["about", qsTr("About")]
+        ["video", qsTr("Video")],
+        ["input", qsTr("Input")],
+        ["audio", qsTr("Audio")],
+        ["host", qsTr("Host")]
     ]
     function categoryTitle(key) {
         for (var i = 0; i < categories.length; i++) {
@@ -112,7 +110,7 @@ Flickable {
         StreamingPreferences.autoAdjustBitrate = (name !== "best")
         StreamingPreferences.save()
         // Rebuild the page so every control shows the new values.
-        stackView.replace(settingsPage, "qrc:/gui/SettingsView.qml", { "category": "stream" })
+        stackView.replace(settingsPage, "qrc:/gui/SettingsView.qml", { "category": "video" })
     }
 
     topMargin: headerHeight
@@ -201,7 +199,7 @@ Flickable {
         spacing: 15
 
         DvGroupBox {
-            category: "stream"
+            category: "video"
             selectedCategory: settingsPage.category
             id: basicSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
@@ -2000,7 +1998,7 @@ Flickable {
         }
 
         DvGroupBox {
-            category: "overlay"
+            category: "video"
             selectedCategory: settingsPage.category
             width: parent.width - (parent.leftPadding + parent.rightPadding)
             padding: 12
@@ -2059,7 +2057,7 @@ Flickable {
         }
 
         DvGroupBox {
-            category: "stream"
+            category: "audio"
             selectedCategory: settingsPage.category
 
             id: audioSettingsGroupBox
@@ -2339,7 +2337,7 @@ Flickable {
         }
 
         DvGroupBox {
-            category: "about"
+            category: "host"
             selectedCategory: settingsPage.category
             id: uiSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
@@ -2661,7 +2659,7 @@ Flickable {
         spacing: 15
 
         DvGroupBox {
-            category: "controls"
+            category: "input"
             selectedCategory: settingsPage.category
             id: inputSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
@@ -2811,7 +2809,7 @@ Flickable {
         }
 
         DvGroupBox {
-            category: "controls"
+            category: "input"
             selectedCategory: settingsPage.category
             id: gamepadSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
@@ -2995,7 +2993,7 @@ Flickable {
 
         DvGroupBox {
             id: hapticsSettingsGroupBox
-            category: "haptics"
+            category: "input"
             selectedCategory: settingsPage.category
             title: qsTr("Haptics and rumble")
 
@@ -3244,7 +3242,7 @@ Flickable {
         }
 
         DvGroupBox {
-            category: "stream"
+            category: "video"
             selectedCategory: settingsPage.category
             id: advancedSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
@@ -3426,7 +3424,7 @@ Flickable {
 
         DvGroupBox {
             id: overlaySettingsGroupBox
-            category: "overlay"
+            category: "video"
             selectedCategory: settingsPage.category
             title: qsTr("Overlay while streaming")
 
@@ -3493,15 +3491,13 @@ Flickable {
                     id: catItem
                     readonly property bool selected: settingsPage.category === modelData[0]
                     readonly property var look: ({
-                        "stream":   [Theme.vermilion, Theme.bone, qsTr("picture, bitrate, presets")],
-                        "host":     [Theme.moss, Theme.bone, qsTr("Apollo display, permissions")],
-                        "controls": [Theme.marigold, Theme.ink, qsTr("mouse, keys, gamepad")],
-                        "haptics":  [Theme.cobalt, Theme.bone, qsTr("rumble, triggers")],
-                        "overlay":  [Theme.ash, Theme.ink, qsTr("stats, quick menu")],
-                        "about":    ["#E2DFDA", Theme.ink, qsTr("version, licences")]
+                        "video": [Theme.vermilion, Theme.bone, qsTr("picture and pacing")],
+                        "input": [Theme.marigold, Theme.ink, qsTr("mouse, gyro, haptics")],
+                        "audio": [Theme.cobalt, Theme.bone, qsTr("output, mic")],
+                        "host":  [Theme.ash, Theme.ink, qsTr("Apollo extras")]
                     })[modelData[0]] || [Theme.ash, Theme.ink, ""]
                     width: parent.width
-                    height: Math.min(130, Math.floor(settingsSidebar.height / settingsPage.categories.length))
+                    height: 120
                     color: look[0]
                     activeFocusOnTab: true
                     Keys.onReturnPressed: settingsPage.category = modelData[0]
@@ -3577,7 +3573,7 @@ Flickable {
 
         // Presets (Stream only). Mouse: a segmented control; otherwise pill chips.
         Rectangle {
-            visible: settingsPage.category === "stream"
+            visible: settingsPage.category === "video"
             anchors.right: parent.right
             anchors.rightMargin: Theme.pageGutter
             anchors.verticalCenter: parent.verticalCenter

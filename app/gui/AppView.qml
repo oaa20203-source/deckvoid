@@ -7,6 +7,7 @@ import AppModel 1.0
 import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
 import DeckVoidTheme 1.0
+import QtQml.Models
 
 CenteredGridView {
     property int computerIndex
@@ -33,10 +34,60 @@ CenteredGridView {
     bottomMargin: 5
     cellWidth: 260; cellHeight: 440;
 
+    // Desktop and Steam Big Picture are the main apps; everything else sits
+    // behind the "Others" bar (Omar, 4 November 2026).
+    property bool showOthers: false
+    readonly property int primaryCount: primaryGroup.count
+    readonly property int othersCount: othersGroup.count
+    function isPrimaryApp(name) {
+        var n = (name || "").toLowerCase()
+        return n === "desktop" || n.indexOf("big picture") >= 0
+    }
+    function sortGroups() {
+        var items = appsModel.items
+        for (var i = 0; i < items.count; i++) {
+            var it = items.get(i)
+            var primary = isPrimaryApp(it.model.name)
+            it.inPrimary = primary
+            it.inOthers = !primary
+        }
+        if (primaryGroup.count === 0 && othersGroup.count > 0) showOthers = true
+    }
+    function toggleOthers() {
+        if (othersGroup.count === 0 && !showOthers) return
+        showOthers = !showOthers
+        currentIndex = (activeFocus && count > 0) ? 0 : -1
+    }
+    Keys.onPressed: function(event) {
+        // Controller Y (sent as F14) switches between the main apps and the others
+        if (event.key === Qt.Key_F14) { toggleOthers(); event.accepted = true }
+    }
+
+    // Kit art block for an app: a flat colour and its name set large.
+    function artColor(name) {
+        var n = (name || "").toLowerCase()
+        if (n === "desktop") return Theme.cobalt
+        if (n.indexOf("big picture") >= 0) return Theme.ash
+        var palette = [Theme.moss, Theme.marigold, Theme.olive, Theme.stone]
+        var h = 0
+        for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 997
+        return palette[h % palette.length]
+    }
+    function artInk(name) {
+        var c = artColor(name)
+        return (c === Theme.ash || c === Theme.marigold) ? Theme.ink : Theme.bone
+    }
+    function artWord(name) {
+        var n = name || ""
+        if (n.toLowerCase().indexOf("big picture") >= 0) return "Steam"
+        return n.split(" ")[0]
+    }
+
     // Header fact cell, footer status and hints (read by main.qml).
-    readonly property string headerFact: objectName + "\n" + (count === 1 ? qsTr("1 app") : qsTr("%1 apps").arg(count))
+    readonly property string headerFact: objectName + "\n" + (appsModel.items.count === 1 ? qsTr("1 app") : qsTr("%1 apps").arg(appsModel.items.count))
     readonly property string footerStatus: currentItem ? qsTr("%1 selected").arg(currentItem.appName) : ""
     readonly property var footerHints: [["A", currentItem && currentItem.appRunning ? qsTr("Resume") : qsTr("Launch")],
+                                        ["Y", showOthers ? qsTr("Main apps") : qsTr("Others")],
                                         ["B", qsTr("Back")], ["≡", qsTr("Options")]]
 
     // Title row: back link and the page title (docs/design/KIT.md)
@@ -58,13 +109,43 @@ CenteredGridView {
             }
             Text {
                 id: pageTitle
-                text: qsTr("Apps on %1").arg(appGrid.objectName)
+                text: appGrid.showOthers ? qsTr("Other apps on %1").arg(appGrid.objectName) : qsTr("Apps on %1").arg(appGrid.objectName)
                 color: Theme.ink
                 font.family: Theme.sansFont
                 font.weight: Font.Bold
                 font.pixelSize: 40
                 font.letterSpacing: -1.2
             }
+        }
+
+        // "Others" bar: a small ruled cell at the top right
+        Rectangle {
+            visible: appGrid.othersCount > 0
+            anchors.right: parent.right
+            y: 8
+            height: 36
+            width: othersRow.implicitWidth + 28
+            color: othersArea.containsMouse ? Theme.ash : "transparent"
+            border.width: 1
+            border.color: Theme.ink
+            radius: Theme.radiusControl
+            Row {
+                id: othersRow
+                anchors.centerIn: parent
+                spacing: 10
+                Text {
+                    text: appGrid.showOthers ? qsTr("← Main apps") : qsTr("Others")
+                    color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Medium; font.pixelSize: 15
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Text {
+                    visible: !appGrid.showOthers
+                    text: appGrid.othersCount + "  →"
+                    color: Theme.stone; font.family: Theme.monoFont; font.pixelSize: 13
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            MouseArea { id: othersArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: appGrid.toggleOthers() }
         }
     }
 
@@ -92,10 +173,12 @@ CenteredGridView {
 
         if (!showGames && !showHiddenGames) {
             // Check if there's a direct launch app
-            var directLaunchAppIndex = model.getDirectLaunchAppIndex();
+            var directLaunchAppIndex = appModel.getDirectLaunchAppIndex();
             if (directLaunchAppIndex >= 0) {
                 // Start the direct launch app if nothing else is running
-                currentIndex = directLaunchAppIndex
+                var dl = appsModel.items.get(directLaunchAppIndex)
+                showOthers = !dl.inPrimary
+                currentIndex = showOthers ? dl.othersIndex : dl.primaryIndex
                 currentItem.launchOrResumeSelectedApp(false)
 
                 // Set showGames so we will not loop when the stream ends
@@ -117,12 +200,29 @@ import AppModel 1.0; AppModel {}', parent, '')
         return model
     }
 
-    model: appModel
+    model: appsModel
 
-    delegate: NavigableItemDelegate {
+    DelegateModel {
+        id: appsModel
+        model: appGrid.appModel
+        groups: [
+            DelegateModelGroup { id: primaryGroup; name: "primary" },
+            DelegateModelGroup { id: othersGroup; name: "others" }
+        ]
+        filterOnGroup: appGrid.showOthers ? "others" : "primary"
+        items.onChanged: appGrid.sortGroups()
+        Component.onCompleted: appGrid.sortGroups()
+        delegate: appDelegate
+    }
+
+    Component {
+        id: appDelegate
+    NavigableItemDelegate {
         width: 240; height: 420;
         padding: 0
         readonly property string appName: model.name
+        // Index in the full app list (the grid shows a filtered group)
+        readonly property int srcIndex: DelegateModel.itemsIndex
         readonly property bool appRunning: model.running
         objectName: model.sleepAction ? "hostSleepTile" : ""
         grid: appGrid
@@ -137,6 +237,7 @@ import AppModel 1.0; AppModel {}', parent, '')
             property bool isPlaceholder: false
 
             id: appIcon
+            visible: false
             x: 1; y: 1
             width: parent.width - 2
             height: 300
@@ -169,11 +270,22 @@ import AppModel 1.0; AppModel {}', parent, '')
             ToolTip.visible: (parent.hovered || parent.highlighted) && (!appNameText || appNameText.truncated)
         }
 
-        // Placeholder art: the app's name set large on an ash block
+        // Kit art block: flat colour with the app's name set large (no host art)
         Rectangle {
-            visible: appIcon.isPlaceholder || appIcon.status !== Image.Ready
             anchors.fill: appIcon
-            color: Theme.ash
+            color: appGrid.artColor(model.name)
+            radius: Theme.radiusCard
+            clip: true
+            Text {
+                anchors { left: parent.left; bottom: parent.bottom; leftMargin: 14; bottomMargin: 6 }
+                text: appGrid.artWord(model.name)
+                color: appGrid.artInk(model.name)
+                font.family: Theme.sansFont
+                font.weight: Font.Bold
+                font.pixelSize: 64
+                font.letterSpacing: -3
+                lineHeight: 0.8
+            }
         }
 
         // Label, title, caption and arrow under the art
@@ -199,7 +311,7 @@ import AppModel 1.0; AppModel {}', parent, '')
 
         Loader {
             id: appNameTextLoader
-            active: appIcon.isPlaceholder
+            active: false
 
             // This loader is not asynchronous to avoid noticeable differences
             // in the time in which the text loads for each game.
@@ -242,13 +354,13 @@ import AppModel 1.0; AppModel {}', parent, '')
                 noticeDialog.open()
                 return
             }
-            var verb = appModel.launchVerbForApp(index)
+            var verb = appModel.launchVerbForApp(srcIndex)
             if (verb === 2) {
                 if (quitExistingApp) {
                     quitAppDialog.appName = appModel.getRunningAppName()
                     quitAppDialog.segueToStream = true
                     quitAppDialog.nextAppName = model.name
-                    quitAppDialog.nextAppIndex = index
+                    quitAppDialog.nextAppIndex = srcIndex
                     quitAppDialog.nextDisplayOverride = displayOverride
                     quitAppDialog.open()
                 }
@@ -259,7 +371,7 @@ import AppModel 1.0; AppModel {}', parent, '')
             var component = Qt.createComponent("StreamSegue.qml")
             var segue = component.createObject(stackView, {
                                                    "appName": model.name,
-                                                   "session": appModel.createSessionForApp(index, displayOverride),
+                                                   "session": appModel.createSessionForApp(srcIndex, displayOverride),
                                                    "isResume": verb === 1
                                                })
             stackView.push(segue)
@@ -337,7 +449,7 @@ import AppModel 1.0; AppModel {}', parent, '')
 
         function launchOnDisplay(virtualDisplay) {
             if (virtualDisplay === 1 && !appModel.apolloVirtualDisplayReady()) {
-                vdNotReadyDialog.appIndex = index
+                vdNotReadyDialog.appIndex = srcIndex
                 vdNotReadyDialog.launch = function() { launchOrResumeSelectedApp(true, 1) }
                 vdNotReadyDialog.open()
                 return
@@ -385,7 +497,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                     checkable: true
                     checked: model.directLaunch
                     text: qsTr("Direct Launch")
-                    onTriggered: appModel.setAppDirectLaunch(model.index, !model.directLaunch)
+                    onTriggered: appModel.setAppDirectLaunch(srcIndex, !model.directLaunch)
                     enabled: !model.hidden
 
                     ToolTip.text: qsTr("Launch this app immediately when the host is selected, bypassing the app selection grid.")
@@ -397,7 +509,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                     checkable: true
                     checked: model.hidden
                     text: qsTr("Hide Game")
-                    onTriggered: appModel.setAppHidden(model.index, !model.hidden)
+                    onTriggered: appModel.setAppHidden(srcIndex, !model.hidden)
                     enabled: model.hidden || (!model.running && !model.directLaunch)
 
                     ToolTip.text: qsTr("Hide this game from the app grid. To access hidden games, right-click on the host and choose %1.").arg(qsTr("View All Apps"))
@@ -407,6 +519,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                 }
             }
         }
+    }
     }
 
     Row {

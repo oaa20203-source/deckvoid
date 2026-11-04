@@ -12,6 +12,8 @@ import SdlGamepadKeyNavigation 1.0
 import DeckVoidTheme 1.0
 
 ApplicationWindow {
+    // Every control uses the kit font (IBM Plex Sans) unless it sets its own
+    font.family: Theme.sansFont
     property bool pollingActive: false
 
     // Set by SettingsView to force the back operation to pop all
@@ -33,6 +35,8 @@ ApplicationWindow {
         Material.accent = Theme.accent
         Material.background = Theme.background
         Material.foreground = Theme.text
+        // Kit: square controls (4 px at most) instead of Material's rounded ones
+        Material.roundedScale = Material.ExtraSmallScale
 
         SdlGamepadKeyNavigation.enable()
     }
