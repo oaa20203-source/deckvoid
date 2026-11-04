@@ -997,20 +997,31 @@ bool Session::initialize(QQuickWindow* qtWindow)
         //
         // We want to keep AV1 at the top of the list for HDR with software decoding
         // because dav1d is higher performance than FFmpeg's HEVC software decoder.
-        if (hevcDA == DecoderAvailability::Hardware
+        //
+        // !ink: AV1 needs roughly 20-30% fewer bits than HEVC for the same
+        // picture, so Auto prefers it whenever this device hardware-decodes it
+        // (Apple Silicon M3 and later, the Steam Deck's VCN). Stock Moonlight
+        // ranks AV1 below HEVC whenever HEVC decodes in hardware.
+        const int av1ProbeFormat = m_Preferences->enableHdr ?
+                                       (m_Preferences->enableYUV444 ? VIDEO_FORMAT_AV1_HIGH10_444 : VIDEO_FORMAT_AV1_MAIN10) :
+                                       (m_Preferences->enableYUV444 ? VIDEO_FORMAT_AV1_HIGH8_444 : VIDEO_FORMAT_AV1_MAIN8);
+        const bool av1Hardware = getDecoderAvailability(testWindow,
+                                                        m_Preferences->videoDecoderSelection,
+                                                        av1ProbeFormat,
+                                                        m_StreamConfig.width,
+                                                        m_StreamConfig.height,
+                                                        m_StreamConfig.fps) == DecoderAvailability::Hardware;
+        if (av1Hardware) {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Auto codec: AV1 decodes in hardware, preferring it over HEVC");
+        }
+        else if (hevcDA == DecoderAvailability::Hardware
 #if !defined(Q_OS_WIN32) && (!(defined(Q_OS_UNIX) && !defined(Q_OS_DARWIN)) || defined(Q_PROCESSOR_X86))
             || !m_Preferences->enableHdr
 #endif
             ) {
             m_SupportedVideoFormats.deprioritizeByMask(VIDEO_FORMAT_MASK_AV1);
         }
-        else if (!m_Preferences->enableHdr &&
-                   getDecoderAvailability(testWindow,
-                                          m_Preferences->videoDecoderSelection,
-                                          m_Preferences->enableYUV444 ? VIDEO_FORMAT_AV1_HIGH8_444 : VIDEO_FORMAT_AV1_MAIN8,
-                                          m_StreamConfig.width,
-                                          m_StreamConfig.height,
-                                          m_StreamConfig.fps) != DecoderAvailability::Hardware) {
+        else if (!m_Preferences->enableHdr) {
             m_SupportedVideoFormats.deprioritizeByMask(VIDEO_FORMAT_MASK_AV1);
         }
 
