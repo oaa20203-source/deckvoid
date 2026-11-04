@@ -1,0 +1,2 @@
+module InputMode
+singleton InputMode 1.0 InputMode.qml

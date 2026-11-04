@@ -29,6 +29,10 @@ private slots:
         const QString testPath = QFileInfo(QDir(QString::fromUtf8(QT_TESTCASE_BUILDDIR)),
                                           QString::fromUtf8(__FILE__)).absolutePath();
         engine.addImportPath(testPath + "/../qml/mocks");
+        // The app registers Theme.qml as the DeckVoidTheme singleton in main.cpp;
+        // the settings components import it, so register it the same way here.
+        qmlRegisterSingletonType(QUrl::fromLocalFile(testPath + "/../../app/gui/Theme.qml"),
+                                 "DeckVoidTheme", 1, 0, "Theme");
         QQmlComponent component(&engine);
         component.setData(QString(R"(
             import QtQuick
