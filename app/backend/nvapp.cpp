@@ -6,6 +6,9 @@
 #define SER_APPCOLLECTOR "appcollector"
 #define SER_HIDDEN "hidden"
 #define SER_DIRECTLAUNCH "directlaunch"
+#define SER_APPUUID "uuid"
+#define SER_HOSTINDEX "hostindex"
+#define SER_ARTVERSION "artversion"
 
 NvApp::NvApp(QSettings& settings)
 {
@@ -15,6 +18,9 @@ NvApp::NvApp(QSettings& settings)
     isAppCollectorGame = settings.value(SER_APPCOLLECTOR).toBool();
     hidden = settings.value(SER_HIDDEN).toBool();
     directLaunch = settings.value(SER_DIRECTLAUNCH).toBool();
+    uuid = settings.value(SER_APPUUID).toString();
+    hostIndex = settings.value(SER_HOSTINDEX, -1).toLongLong();
+    artVersion = settings.value(SER_ARTVERSION).toString();
 }
 
 void NvApp::serialize(QSettings& settings) const
@@ -25,4 +31,7 @@ void NvApp::serialize(QSettings& settings) const
     settings.setValue(SER_APPCOLLECTOR, isAppCollectorGame);
     settings.setValue(SER_HIDDEN, hidden);
     settings.setValue(SER_DIRECTLAUNCH, directLaunch);
+    settings.setValue(SER_APPUUID, uuid);
+    settings.setValue(SER_HOSTINDEX, hostIndex);
+    settings.setValue(SER_ARTVERSION, artVersion);
 }

@@ -255,6 +255,8 @@ HEADERS += \
     backend/framelimitercapabilities.h \
     backend/apollo/apollohostinfo.h \
     backend/apollo/apollopermissions.h \
+    backend/apollo/apollolaunchverb.h \
+    backend/applistparser.h \
     backend/nvhttp.h \
     backend/poweractions.h \
     backend/launchwarning.h \

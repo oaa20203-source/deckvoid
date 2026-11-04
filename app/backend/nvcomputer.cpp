@@ -1,4 +1,5 @@
 #include "nvcomputer.h"
+#include "applistparser.h"
 #include "poweractions.h"
 #include "framelimitercapabilities.h"
 #include "nvapp.h"
@@ -124,9 +125,8 @@ bool NvComputer::isEqualSerialized(const NvComputer &that) const
 
 void NvComputer::sortAppList()
 {
-    std::stable_sort(appList.begin(), appList.end(), [](const NvApp& app1, const NvApp& app2) {
-       return app1.name.toLower() < app2.name.toLower();
-    });
+    // Host order (Apollo IDX) when available, otherwise by name.
+    AppListParser::sort(appList);
 }
 
 NvComputer::NvComputer(NvHTTP& http, QString serverInfo)

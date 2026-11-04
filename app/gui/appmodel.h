@@ -24,6 +24,7 @@ class AppModel : public QAbstractListModel
         DirectLaunchRole,
         AppCollectorGameRole,
         SleepActionRole,
+        NoticeRole,
     };
 
 public:
@@ -41,6 +42,9 @@ public:
     Q_INVOKABLE int getDirectLaunchAppIndex();
 
     Q_INVOKABLE int getRunningAppId();
+
+    // 0 = launch, 1 = resume, 2 = another app is running (ask before quitting it)
+    Q_INVOKABLE int launchVerbForApp(int appIndex);
 
     Q_INVOKABLE QString getRunningAppName();
 

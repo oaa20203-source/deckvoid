@@ -1,6 +1,7 @@
 #include "nvcomputer.h"
 #include "pyrowaveudpprobe.h"
 #include "poweractions.h"
+#include "applistparser.h"
 #include <Limelight.h>
 
 #include <QDebug>
@@ -462,46 +463,7 @@ NvHTTP::getAppList()
                                             NvLogLevel::NVLL_ERROR);
     verifyResponseStatus(appxml);
 
-    QXmlStreamReader xmlReader(appxml);
-    QVector<NvApp> apps;
-    while (!xmlReader.atEnd()) {
-        while (xmlReader.readNextStartElement()) {
-            auto name = xmlReader.name();
-            if (XML_NAME_EQUALS(name, "App")) {
-                // We must have a valid app before advancing to the next one
-                if (!apps.isEmpty() && !apps.last().isInitialized()) {
-                    qWarning() << "Invalid applist XML";
-                    throw std::runtime_error("Invalid applist XML");
-                }
-                apps.append(NvApp());
-            }
-            else if (!apps.isEmpty()) {
-                if (XML_NAME_EQUALS(name, "AppTitle")) {
-                    // If an app has no name, Sunshine may send us <AppTitle/>,
-                    // which readElementText() returns as a null QString.
-                    // We want to treat this as an empty QString instead, so we
-                    // will explicitly convert it. An empty string will satisfy
-                    // NvApp's isInitialized() check.
-                    QString name = xmlReader.readElementText();
-                    if (name.isNull()) {
-                        name = "";
-                    }
-                    apps.last().name = name;
-                }
-                else if (XML_NAME_EQUALS(name, "ID")) {
-                    apps.last().id = xmlReader.readElementText().toInt();
-                }
-                else if (XML_NAME_EQUALS(name, "IsHdrSupported")) {
-                    apps.last().hdrSupported = xmlReader.readElementText() == "1";
-                }
-                else if (XML_NAME_EQUALS(name, "IsAppCollectorGame")) {
-                    apps.last().isAppCollectorGame = xmlReader.readElementText() == "1";
-                }
-            }
-        }
-    }
-
-    return apps;
+    return AppListParser::parse(appxml);
 }
 
 void

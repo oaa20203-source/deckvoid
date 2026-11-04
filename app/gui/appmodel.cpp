@@ -1,4 +1,5 @@
 #include "appmodel.h"
+#include "backend/apollo/apollolaunchverb.h"
 
 AppModel::AppModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -52,6 +53,17 @@ void AppModel::initialize(ComputerManager* computerManager, int computerIndex, b
 int AppModel::getRunningAppId()
 {
     return m_CurrentGameId;
+}
+
+int AppModel::launchVerbForApp(int appIndex)
+{
+    if (appIndex < 0 || appIndex >= m_VisibleApps.count()) return 0;
+    switch (ApolloLaunchVerb::choose(m_Computer->currentGameId, m_Computer->apollo.currentGameUuid,
+                                     m_VisibleApps.at(appIndex))) {
+    case ApolloLaunchVerb::Verb::Resume: return 1;
+    case ApolloLaunchVerb::Verb::QuitThenLaunch: return 2;
+    default: return 0;
+    }
 }
 
 QString AppModel::getRunningAppName()
@@ -108,7 +120,7 @@ QVariant AppModel::data(const QModelIndex &index, int role) const
         case BoxArtRole: return QUrl("qrc:/res/no_app_image.png");
         case SleepActionRole: return true;
         case AppIdRole: return 0; // No real app ID; never sent to a host.
-        case RunningRole: case HiddenRole: case DirectLaunchRole: case AppCollectorGameRole: return false;
+        case RunningRole: case HiddenRole: case DirectLaunchRole: case AppCollectorGameRole: case NoticeRole: return false;
         default: return QVariant();
         }
     }
@@ -120,7 +132,8 @@ QVariant AppModel::data(const QModelIndex &index, int role) const
     case NameRole:
         return app.name;
     case RunningRole:
-        return m_Computer->currentGameId == app.id;
+        return ApolloLaunchVerb::choose(m_Computer->currentGameId, m_Computer->apollo.currentGameUuid, app) ==
+               ApolloLaunchVerb::Verb::Resume;
     case BoxArtRole:
         // FIXME: const-correctness
         return const_cast<BoxArtManager&>(m_BoxArtManager).loadBoxArt(m_Computer, app);
@@ -134,6 +147,8 @@ QVariant AppModel::data(const QModelIndex &index, int role) const
         return app.isAppCollectorGame;
     case SleepActionRole:
         return false;
+    case NoticeRole:
+        return app.isApolloPermissionNotice();
     default:
         return QVariant();
     }
@@ -151,6 +166,7 @@ QHash<int, QByteArray> AppModel::roleNames() const
     names[DirectLaunchRole] = "directLaunch";
     names[AppCollectorGameRole] = "appCollectorGame";
     names[SleepActionRole] = "sleepAction";
+    names[NoticeRole] = "notice";
 
     return names;
 }

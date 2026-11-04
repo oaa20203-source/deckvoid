@@ -3,6 +3,12 @@
 
 #include "backend/apollo/apollohostinfo.h"
 #include "backend/apollo/apollopermissions.h"
+#include "backend/applistparser.h"
+#include "backend/apollo/apollolaunchverb.h"
+#include "backend/nvapp.h"
+
+#include <QSettings>
+#include <QTemporaryDir>
 
 namespace {
 
@@ -137,6 +143,140 @@ private slots:
         QVERIFY(names(0).isEmpty());
         // Unknown bits are ignored rather than shown as garbage.
         QCOMPARE(names(0x1u | List), QStringList({"List applications"}));
+    }
+    void appListParsesApolloFields()
+    {
+        // Shape of Vibepollo's /applist (src/nvhttp.cpp:4745-4758).
+        const auto apps = AppListParser::parse(
+            "<root status_code=\"200\">"
+            "<App><IsHdrSupported>1</IsHdrSupported><AppTitle>Desktop</AppTitle><UUID>11111111-0000-4000-8000-000000000001</UUID><IDX>0</IDX><ArtVersion>3</ArtVersion><ID>881448767</ID></App>"
+            "<App><IsHdrSupported>0</IsHdrSupported><AppTitle>Steam Big Picture</AppTitle><UUID>22222222-0000-4000-8000-000000000002</UUID><IDX>1</IDX><ArtVersion>7</ArtVersion><ID>1093255277</ID></App>"
+            "</root>");
+        QCOMPARE(apps.size(), 2);
+        QCOMPARE(apps[0].name, QString("Desktop"));
+        QCOMPARE(apps[0].id, 881448767);
+        QVERIFY(apps[0].hdrSupported);
+        QCOMPARE(apps[0].uuid, QString("11111111-0000-4000-8000-000000000001"));
+        QCOMPARE(apps[0].hostIndex, qint64(0));
+        QCOMPARE(apps[0].artVersion, QString("3"));
+        QCOMPARE(apps[1].hostIndex, qint64(1));
+    }
+
+    void appListWithoutApolloFields()
+    {
+        const auto apps = AppListParser::parse(
+            "<root status_code=\"200\"><App><AppTitle>Steam</AppTitle><ID>5</ID><IsHdrSupported>0</IsHdrSupported></App></root>");
+        QCOMPARE(apps.size(), 1);
+        QVERIFY(apps[0].uuid.isEmpty());
+        QCOMPARE(apps[0].hostIndex, qint64(-1));
+        QVERIFY(apps[0].artVersion.isEmpty());
+    }
+
+    void appListRejectsAppWithoutId()
+    {
+        QVERIFY_THROWS_EXCEPTION(std::runtime_error,
+            AppListParser::parse("<root><App><AppTitle>A</AppTitle></App><App><AppTitle>B</AppTitle><ID>2</ID></App></root>"));
+    }
+
+    void sortFollowsHostIndexWhenPresent()
+    {
+        QVector<NvApp> apps(5);
+        apps[0].name = "Zelda";        apps[0].hostIndex = 0;
+        apps[1].name = "Remote Input"; apps[1].hostIndex = 2147483506; // control tile: IDX is its ID
+        apps[2].name = "Alpha";        apps[2].hostIndex = 2;
+        apps[3].name = "Catalogue";    apps[3].hostIndex = -1;         // empty IDX: after all numbered
+        apps[4].name = "Mario";        apps[4].hostIndex = 1;
+        AppListParser::sort(apps);
+        QStringList order;
+        for (const auto& app : apps) order << app.name;
+        QCOMPARE(order, QStringList({"Zelda", "Mario", "Alpha", "Remote Input", "Catalogue"}));
+    }
+
+    void idxParsing()
+    {
+        const auto apps = AppListParser::parse(
+            "<root><App><AppTitle>A</AppTitle><ID>1</ID><IDX>2147483506</IDX></App>"
+            "<App><AppTitle>B</AppTitle><ID>2</ID><IDX></IDX></App>"
+            "<App><AppTitle>C</AppTitle><ID>3</ID><IDX>abc</IDX></App>"
+            "<App><AppTitle>D</AppTitle><ID>4</ID><IDX>-3</IDX></App></root>");
+        QCOMPARE(apps[0].hostIndex, qint64(2147483506));
+        QCOMPARE(apps[1].hostIndex, qint64(-1));
+        QCOMPARE(apps[2].hostIndex, qint64(-1));
+        QCOMPARE(apps[3].hostIndex, qint64(-1));
+    }
+
+    void sortKeepsXmlOrderForTies()
+    {
+        QVector<NvApp> apps(3);
+        apps[0].name = "B"; apps[0].hostIndex = -1;
+        apps[1].name = "A"; apps[1].hostIndex = 0;
+        apps[2].name = "C"; apps[2].hostIndex = -1;
+        AppListParser::sort(apps);
+        QCOMPARE(apps[0].name, QString("A"));
+        QCOMPARE(apps[1].name, QString("B"));
+        QCOMPARE(apps[2].name, QString("C"));
+    }
+
+    void permissionNoticeApp()
+    {
+        // Sent only when the client has none of list, view or launch (src/nvhttp.cpp:4762-4775).
+        NvApp notice; notice.id = 114514;
+        NvApp realAppSameId; realAppSameId.id = 114514; realAppSameId.uuid = "U";
+        NvApp game; game.id = 5;
+        QVERIFY(notice.isApolloPermissionNotice());
+        QVERIFY(!realAppSameId.isApolloPermissionNotice());
+        QVERIFY(!game.isApolloPermissionNotice());
+    }
+
+    void launchVerbStockHost()
+    {
+        using V = ApolloLaunchVerb::Verb;
+        NvApp app; app.id = 5;
+        QCOMPARE(ApolloLaunchVerb::choose(0, QString(), app), V::Launch);
+        QCOMPARE(ApolloLaunchVerb::choose(5, QString(), app), V::Resume);
+        QCOMPARE(ApolloLaunchVerb::choose(9, QString(), app), V::QuitThenLaunch);
+    }
+
+    void launchVerbByUuid()
+    {
+        using V = ApolloLaunchVerb::Verb;
+        NvApp app; app.id = 5; app.uuid = "aaaa-1111";
+        QCOMPARE(ApolloLaunchVerb::choose(5, "AAAA-1111", app), V::Resume);      // case-insensitive
+        QCOMPARE(ApolloLaunchVerb::choose(5, "bbbb-2222", app), V::QuitThenLaunch); // UUID wins over ID
+        QCOMPARE(ApolloLaunchVerb::choose(0, "aaaa-1111", app), V::Resume);
+    }
+
+    void launchVerbReplacesRemoteInput()
+    {
+        using V = ApolloLaunchVerb::Verb;
+        NvApp app; app.id = 5; app.uuid = "aaaa-1111";
+        // Remote Input running: launch the new app directly; the host replaces the input-only session.
+        QCOMPARE(ApolloLaunchVerb::choose(77, "8cb5c136-da67-4f99-b4a1-f9cd35005cf4", app), V::Launch);
+        QCOMPARE(ApolloLaunchVerb::choose(77, "9A1C5A25-58FE-40E0-B9AA-7D3F00000006", app), V::Launch);
+        QVERIFY(ApolloLaunchVerb::isRemoteInput("8CB5C136-DA67-4F99-B4A1-F9CD35005CF4"));
+        QVERIFY(!ApolloLaunchVerb::isRemoteInput("aaaa-1111"));
+    }
+
+    void appSerializationKeepsApolloFields()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QSettings settings(dir.filePath("apps.ini"), QSettings::IniFormat);
+        NvApp app; app.id = 7; app.name = "Game"; app.uuid = "U-7"; app.hostIndex = 4; app.artVersion = "9";
+        app.serialize(settings);
+        NvApp loaded(settings);
+        QCOMPARE(loaded, app);
+        QCOMPARE(loaded.hostIndex, qint64(4));
+    }
+
+    void legacySerializedAppHasNoIndex()
+    {
+        QTemporaryDir dir;
+        QSettings settings(dir.filePath("legacy.ini"), QSettings::IniFormat);
+        settings.setValue("name", "Old"); settings.setValue("id", 3);
+        NvApp loaded(settings);
+        QCOMPARE(loaded.hostIndex, qint64(-1));
+        QVERIFY(loaded.uuid.isEmpty());
     }
 };
 

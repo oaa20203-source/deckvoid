@@ -4,6 +4,7 @@
 #include <QSysInfo>
 #include <QDir>
 #include "session.h"
+#include "backend/apollo/apollolaunchverb.h"
 #include "settings/streamingpreferences.h"
 #include "streaming/streamutils.h"
 #ifdef Q_OS_DARWIN
@@ -1814,8 +1815,10 @@ bool Session::startConnectionAsync()
     m_HostLaunchWarning.clear();
     // The UI should have ensured the old game was already quit
     // if we decide to stream a different game.
-    Q_ASSERT(m_Computer->currentGameId == 0 ||
-             m_Computer->currentGameId == m_App.id);
+    // Apollo hosts may run Remote Input, which a new launch replaces on the host.
+    const auto launchVerb = ApolloLaunchVerb::choose(m_Computer->currentGameId,
+                                                     m_Computer->apollo.currentGameUuid, m_App);
+    Q_ASSERT(launchVerb != ApolloLaunchVerb::Verb::QuitThenLaunch);
 
     bool enableGameOptimizations;
     if (m_Computer->isNvidiaServerSoftware) {
@@ -1845,7 +1848,7 @@ bool Session::startConnectionAsync()
 
     try {
         NvHTTP http(m_Computer);
-        http.startApp(m_Computer->currentGameId != 0 ? "resume" : "launch",
+        http.startApp(launchVerb == ApolloLaunchVerb::Verb::Resume ? "resume" : "launch",
                       m_Computer->isNvidiaServerSoftware,
                       m_App.id, &m_StreamConfig,
                       enableGameOptimizations,

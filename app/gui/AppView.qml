@@ -222,8 +222,14 @@ import AppModel 1.0; AppModel {}', parent, '')
                 if (!appGrid.sleepPending) sleepDialog.open()
                 return
             }
-            var runningId = appModel.getRunningAppId()
-            if (runningId !== 0 && runningId !== model.appid) {
+            if (model.notice) {
+                // Apollo permission placeholder: its title says what to enable on the host.
+                noticeDialog.text = model.name
+                noticeDialog.open()
+                return
+            }
+            var verb = appModel.launchVerbForApp(index)
+            if (verb === 2) {
                 if (quitExistingApp) {
                     quitAppDialog.appName = appModel.getRunningAppName()
                     quitAppDialog.segueToStream = true
@@ -239,7 +245,7 @@ import AppModel 1.0; AppModel {}', parent, '')
             var segue = component.createObject(stackView, {
                                                    "appName": model.name,
                                                    "session": appModel.createSessionForApp(index),
-                                                   "isResume": runningId === model.appid
+                                                   "isResume": verb === 1
                                                })
             stackView.push(segue)
         }
@@ -410,6 +416,13 @@ import AppModel 1.0; AppModel {}', parent, '')
                 appModel.requestHostSleep()
             }
         }
+    }
+
+    NavigableMessageDialog {
+        id: noticeDialog
+        objectName: "apolloPermissionNotice"
+        title: qsTr("Host permission needed")
+        standardButtons: Dialog.Ok
     }
 
     NavigableMessageDialog {
