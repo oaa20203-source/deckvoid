@@ -48,7 +48,8 @@ Item {
         return parts.join(" · ")
     }
 
-    readonly property real preferredHeight: 236
+    // Figma: 600 x 238; block 210 wide; text column 20 px right of the block.
+    readonly property real preferredHeight: 238
     implicitHeight: preferredHeight
 
     // Focus: 2 px ink outline, 4 px offset, square corners. No glow, no lift.
@@ -73,91 +74,97 @@ Item {
 
         Rectangle {
             id: block
-            anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 1 }
-            width: Math.min(210, Math.round(parent.width * 0.35))
+            x: 1; y: 1
+            width: 210
+            height: parent.height - 2
             color: card.blockColor
             Text {
-                anchors { left: parent.left; top: parent.top; margins: 16 }
+                x: 16; y: 16
                 text: qsTr("PC")
                 color: Theme.bone
                 font.family: Theme.monoFont
                 font.pixelSize: 12
             }
             Text {
-                anchors { left: parent.left; bottom: parent.bottom; leftMargin: 14; bottomMargin: 8 }
+                x: 16
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 16
                 text: (card.number < 10 ? "0" : "") + card.number
                 color: Theme.bone
                 font.family: Theme.sansFont
                 font.weight: Font.Bold
                 font.pixelSize: 120
                 font.letterSpacing: -6
-                lineHeight: 0.75
+                lineHeightMode: Text.FixedHeight
+                lineHeight: 90
+                verticalAlignment: Text.AlignBottom
             }
         }
 
-        Column {
-            anchors { left: block.right; right: parent.right; top: parent.top; margins: 20 }
-            spacing: 0
+        Rectangle {
+            id: statusTag
+            x: 231; y: 19
+            width: statusText.implicitWidth + 14; height: 20
+            color: card.status === "ready" ? Theme.ink : card.blockColor
+            Text { id: statusText; anchors.centerIn: parent; text: card.statusLabel; color: Theme.bone; font.family: Theme.monoFont; font.pixelSize: 11 }
+        }
+        Text {
+            id: nameText
+            x: 231; y: 51
+            width: parent.width - x - 21
+            text: card.name
+            color: Theme.ink
+            font.family: Theme.sansFont
+            font.weight: Font.Bold
+            font.pixelSize: 30
+            font.letterSpacing: -0.9
+            lineHeightMode: Text.FixedHeight
+            lineHeight: 30
+            elide: Text.ElideRight
+        }
+        Text {
+            x: 231; y: 89
+            width: parent.width - x - 21
+            text: card.caption
+            color: Theme.stone
+            font.family: Theme.monoFont
+            font.pixelSize: 13
+            lineHeightMode: Text.FixedHeight
+            lineHeight: 17
+            elide: Text.ElideRight
+        }
 
+        // Rule, then what's running (marigold label)
+        Rectangle { x: 231; y: 134; width: parent.width - x - 21; height: 1; color: Theme.rule }
+        Row {
+            x: 231; y: 148
+            spacing: 8
+            visible: card.runningApp !== ""
             Rectangle {
-                width: statusText.implicitWidth + 14; height: 20
-                color: card.status === "ready" ? Theme.ink : card.blockColor
-                Text { id: statusText; anchors.centerIn: parent; text: card.statusLabel; color: Theme.bone; font.family: Theme.monoFont; font.pixelSize: 11 }
+                width: runText.implicitWidth + 14; height: 20
+                color: Theme.marigold
+                Text { id: runText; anchors.centerIn: parent; text: qsTr("RUNNING"); color: Theme.ink; font.family: Theme.monoFont; font.pixelSize: 11 }
             }
-            Item { width: 1; height: 12 }
-            Text {
-                width: parent.width
-                text: card.name
-                color: Theme.ink
-                font.family: Theme.sansFont
-                font.weight: Font.Bold
-                font.pixelSize: 30
-                font.letterSpacing: -0.9
-                elide: Text.ElideRight
-            }
-            Item { width: 1; height: 8 }
-            Text {
-                width: parent.width
-                text: card.caption
-                color: Theme.stone
-                font.family: Theme.monoFont
-                font.pixelSize: 13
-                elide: Text.ElideRight
-            }
+            Text { text: card.runningApp; color: Theme.ink; font.family: Theme.sansFont; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
         }
 
-        // Bottom line: what's running (marigold label), and the action as a text link
-        Item {
-            anchors { left: block.right; right: parent.right; bottom: parent.bottom; leftMargin: 20; rightMargin: 16; bottomMargin: 16 }
-            height: 34
-            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.rule }
-            Row {
-                anchors.left: parent.left
-                anchors.bottom: parent.bottom
-                spacing: 8
-                visible: card.runningApp !== ""
-                Rectangle {
-                    width: runText.implicitWidth + 14; height: 20
-                    color: Theme.marigold
-                    Text { id: runText; anchors.centerIn: parent; text: qsTr("RUNNING"); color: Theme.ink; font.family: Theme.monoFont; font.pixelSize: 11 }
-                }
-                Text { text: card.runningApp; color: Theme.ink; font.family: Theme.sansFont; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
-            }
-            Text {
-                id: actionLink
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                text: card.actionText !== "" ? card.actionText + "  →" : "→"
-                color: Theme.ink
-                font.family: Theme.sansFont
-                font.weight: Font.Medium
-                font.pixelSize: 15
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -8
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: card.status === "asleep" ? card.wakeRequested() : card.activated()
-                }
+        // Action as a text link, bottom right (Figma: 17 from the right, 15 from the bottom)
+        Text {
+            id: actionLink
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: 17
+            anchors.bottomMargin: 15
+            text: card.actionText !== "" ? card.actionText + "  →" : "→"
+            color: Theme.ink
+            font.family: Theme.sansFont
+            font.weight: Font.Medium
+            font.pixelSize: 15
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -8
+                cursorShape: Qt.PointingHandCursor
+                onClicked: card.status === "asleep" ? card.wakeRequested() : card.activated()
             }
         }
     }

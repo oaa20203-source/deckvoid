@@ -40,14 +40,16 @@ Flickable {
     // DeckVoid layout: category sidebar on the left, a fixed header with the
     // category title and preset chips, and the selected category's cards below.
     property string category: "video"
-    readonly property int sidebarWidth: 260
-    readonly property int headerHeight: Theme.mouseMode ? 76 : 92
+    readonly property int sidebarWidth: 300
+    readonly property int headerHeight: 92   // Figma: title 30 px below the header, content 98 px below
     readonly property var footerHints: [["‹›", qsTr("Adjust")], ["A", qsTr("Select")], ["B", qsTr("Back")]]
     readonly property var categories: [
         ["video", qsTr("Video")],
         ["input", qsTr("Input")],
         ["audio", qsTr("Audio")],
-        ["host", qsTr("Host")]
+        ["host", qsTr("Host")],
+        ["overlay", qsTr("Overlay")],
+        ["about", qsTr("About")]
     ]
     function categoryTitle(key) {
         for (var i = 0; i < categories.length; i++) {
@@ -194,8 +196,9 @@ Flickable {
     Column {
         padding: 10
         id: settingsColumn1
-        x: settingsPage.sidebarWidth + Theme.pageGutter - 10
-        width: settingsPage.width - x - Theme.pageGutter + 10
+        // Figma: content 49 px right of the blocks, 48 px from the right edge
+        x: settingsPage.sidebarWidth + 49 - 10
+        width: settingsPage.width - x - 48 + 10
         spacing: 15
 
         DvGroupBox {
@@ -1998,7 +2001,7 @@ Flickable {
         }
 
         DvGroupBox {
-            category: "video"
+            category: "overlay"
             selectedCategory: settingsPage.category
             width: parent.width - (parent.leftPadding + parent.rightPadding)
             padding: 12
@@ -2337,7 +2340,7 @@ Flickable {
         }
 
         DvGroupBox {
-            category: "host"
+            category: "about"
             selectedCategory: settingsPage.category
             id: uiSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
@@ -3424,7 +3427,7 @@ Flickable {
 
         DvGroupBox {
             id: overlaySettingsGroupBox
-            category: "video"
+            category: "overlay"
             selectedCategory: settingsPage.category
             title: qsTr("Overlay while streaming")
 
@@ -3494,10 +3497,12 @@ Flickable {
                         "video": [Theme.vermilion, Theme.bone, qsTr("picture and pacing")],
                         "input": [Theme.marigold, Theme.ink, qsTr("mouse, gyro, haptics")],
                         "audio": [Theme.cobalt, Theme.bone, qsTr("output, mic")],
-                        "host":  [Theme.ash, Theme.ink, qsTr("Apollo extras")]
+                        "host":  [Theme.ash, Theme.ink, qsTr("Apollo extras")],
+                        "overlay": [Theme.pink, Theme.ink, qsTr("stats, quick menu")],
+                        "about": [Theme.moss, Theme.bone, qsTr("version, licences")]
                     })[modelData[0]] || [Theme.ash, Theme.ink, ""]
                     width: parent.width
-                    height: 120
+                    height: Math.min(120, Math.floor(settingsSidebar.height / settingsPage.categories.length))
                     color: look[0]
                     activeFocusOnTab: true
                     Keys.onReturnPressed: settingsPage.category = modelData[0]
@@ -3520,21 +3525,24 @@ Flickable {
                         }
                     }
                     Text {
-                        anchors.left: parent.left; anchors.leftMargin: 16
-                        anchors.bottom: parent.bottom; anchors.bottomMargin: 8
+                        anchors.left: parent.left; anchors.leftMargin: 18
+                        anchors.bottom: parent.bottom; anchors.bottomMargin: 14
                         text: modelData[1].charAt(0)
                         color: catItem.look[1]
                         font.family: Theme.sansFont
                         font.weight: Font.Bold
-                        font.pixelSize: Math.min(72, catItem.height * 0.62)
-                        lineHeight: 0.8
+                        font.pixelSize: 72
+                        font.letterSpacing: -3.6
+                        lineHeightMode: Text.FixedHeight
+                        lineHeight: 58
+                        verticalAlignment: Text.AlignBottom
                     }
                     Column {
-                        anchors.right: parent.right; anchors.rightMargin: 14
-                        anchors.bottom: parent.bottom; anchors.bottomMargin: 12
-                        width: parent.width - 84
+                        anchors.right: parent.right; anchors.rightMargin: 18
+                        anchors.bottom: parent.bottom; anchors.bottomMargin: 14
+                        width: parent.width - 100
                         Text { width: parent.width; horizontalAlignment: Text.AlignRight; text: modelData[1].toUpperCase(); color: catItem.look[1]; font.family: Theme.monoFont; font.pixelSize: 12; elide: Text.ElideRight }
-                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; text: catItem.look[2]; color: catItem.look[1]; font.family: Theme.monoFont; font.pixelSize: 11; opacity: 0.85; elide: Text.ElideRight }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; text: catItem.look[2]; color: catItem.look[1]; font.family: Theme.monoFont; font.pixelSize: 12; elide: Text.ElideRight }
                     }
                     MouseArea {
                         id: catArea
@@ -3561,7 +3569,7 @@ Flickable {
         Text {
             id: categoryHeading
             anchors.left: parent.left
-            anchors.leftMargin: Theme.pageGutter
+            anchors.leftMargin: 49
             anchors.verticalCenter: parent.verticalCenter
             text: settingsPage.categoryTitle(settingsPage.category)
             color: Theme.text
@@ -3575,7 +3583,7 @@ Flickable {
         Rectangle {
             visible: settingsPage.category === "video"
             anchors.right: parent.right
-            anchors.rightMargin: Theme.pageGutter
+            anchors.rightMargin: 48
             anchors.verticalCenter: parent.verticalCenter
             width: presetRow.width + (Theme.mouseMode ? 8 : 0)
             height: presetRow.height + (Theme.mouseMode ? 8 : 0)

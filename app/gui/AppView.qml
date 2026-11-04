@@ -9,7 +9,7 @@ import SdlGamepadKeyNavigation 1.0
 import DeckVoidTheme 1.0
 import QtQml.Models
 
-CenteredGridView {
+FocusScope {
     property int computerIndex
     property AppModel appModel : createModel()
     property bool activated
@@ -29,10 +29,11 @@ CenteredGridView {
     id: appGrid
     focus: true
     activeFocusOnTab: true
-    topMargin: 28
-    minMargin: Theme.pageGutter
-    bottomMargin: 5
-    cellWidth: 260; cellHeight: 440;
+    // The cards sit in a horizontal row, because Figma uses two card sizes
+    // (running app 520 x 358, others 300 x 263), which a grid can't do.
+    property alias currentIndex: appList.currentIndex
+    readonly property alias currentItem: appList.currentItem
+    readonly property alias count: appList.count
 
     // Desktop and Steam Big Picture are the main apps; everything else sits
     // behind the "Others" bar (Omar, 4 November 2026).
@@ -80,7 +81,9 @@ CenteredGridView {
     function artWord(name) {
         var n = name || ""
         if (n.toLowerCase().indexOf("big picture") >= 0) return "Steam"
-        return n.split(" ")[0]
+        // Last word tells similar names apart ("Remote Monitor" -> "Monitor")
+        var words = n.split(" ")
+        return words[words.length - 1]
     }
 
     // Header fact cell, footer status and hints (read by main.qml).
@@ -91,11 +94,13 @@ CenteredGridView {
                                         ["B", qsTr("Back")], ["≡", qsTr("Options")]]
 
     // Title row: back link and the page title (docs/design/KIT.md)
-    header: Item {
-        width: appGrid.width - appGrid.leftMargin - appGrid.rightMargin
-        height: 92
+    Item {
+        id: titleRow
+        x: 32
+        y: 28
+        width: appGrid.width - 64
+        height: 52
         Row {
-            y: 4
             spacing: 24
             Text {
                 anchors.baseline: pageTitle.baseline
@@ -200,7 +205,20 @@ import AppModel 1.0; AppModel {}', parent, '')
         return model
     }
 
-    model: appsModel
+    ListView {
+        id: appList
+        x: 32
+        y: titleRow.y + titleRow.height + 28
+        width: appGrid.width - 64
+        height: appGrid.height - y
+        orientation: ListView.Horizontal
+        spacing: 20
+        focus: true
+        clip: false
+        boundsBehavior: Flickable.StopAtBounds
+        highlightFollowsCurrentItem: false
+        model: appsModel
+    }
 
     DelegateModel {
         id: appsModel
@@ -218,14 +236,17 @@ import AppModel 1.0; AppModel {}', parent, '')
     Component {
         id: appDelegate
     NavigableItemDelegate {
-        width: 240; height: 420;
+        // Figma sizes: running app 520 x 358 (art 240), others 300 x 263 (art 150)
+        readonly property bool big: model.running
+        width: big ? 520 : 300
+        height: big ? 358 : 263
         padding: 0
         readonly property string appName: model.name
         // Index in the full app list (the grid shows a filtered group)
         readonly property int srcIndex: DelegateModel.itemsIndex
         readonly property bool appRunning: model.running
         objectName: model.sleepAction ? "hostSleepTile" : ""
-        grid: appGrid
+        grid: appList
 
         property alias appContextMenu: appContextMenuLoader.item
         property alias appNameText: appNameTextLoader.item
@@ -240,7 +261,7 @@ import AppModel 1.0; AppModel {}', parent, '')
             visible: false
             x: 1; y: 1
             width: parent.width - 2
-            height: 300
+            height: parent.big ? 240 : 150
             fillMode: Image.PreserveAspectCrop
             source: model.boxart
 
@@ -272,40 +293,68 @@ import AppModel 1.0; AppModel {}', parent, '')
 
         // Kit art block: flat colour with the app's name set large (no host art)
         Rectangle {
+            id: artBlock
             anchors.fill: appIcon
             color: appGrid.artColor(model.name)
-            radius: Theme.radiusCard
+            radius: Theme.radiusCard - 1
             clip: true
             Text {
-                anchors { left: parent.left; bottom: parent.bottom; leftMargin: 14; bottomMargin: 6 }
+                x: 18
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 18
                 text: appGrid.artWord(model.name)
                 color: appGrid.artInk(model.name)
                 font.family: Theme.sansFont
                 font.weight: Font.Bold
-                font.pixelSize: 64
-                font.letterSpacing: -3
-                lineHeight: 0.8
+                font.pixelSize: parent.parent.big ? 120 : 64
+                font.letterSpacing: parent.parent.big ? -6 : -3.2
+                lineHeightMode: Text.FixedHeight
+                lineHeight: parent.parent.big ? 90 : 52
+                verticalAlignment: Text.AlignBottom
             }
         }
 
-        // Label, title, caption and arrow under the art
-        Column {
-            anchors { left: parent.left; right: parent.right; top: appIcon.bottom; margins: 16 }
-            spacing: 0
-            Rectangle {
-                width: tagText.implicitWidth + 14; height: 20
-                color: model.running ? Theme.marigold : Theme.ash
-                border.width: model.running ? 0 : 1
-                border.color: Theme.cardRule
-                Text { id: tagText; anchors.centerIn: parent; text: model.running ? qsTr("RUNNING NOW") : qsTr("APP"); color: Theme.ink; font.family: Theme.monoFont; font.pixelSize: 11 }
-            }
-            Item { width: 1; height: 10 }
-            Text { width: parent.width; text: model.name; color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Bold; font.pixelSize: 20; font.letterSpacing: -0.4; elide: Text.ElideRight }
-            Item { width: 1; height: 4 }
-            Text { width: parent.width; text: model.running ? qsTr("resume · quit from Options") : qsTr("launch"); color: Theme.stone; font.family: Theme.monoFont; font.pixelSize: 12; elide: Text.ElideRight }
+        // Label, title, caption (Figma: label 16 below the art, title 10 below,
+        // caption 4 below), arrow 17 from the right and 14 from the bottom
+        Rectangle {
+            id: tag
+            x: 19
+            y: artBlock.y + artBlock.height + 16
+            width: tagText.implicitWidth + 14; height: 20
+            color: model.running ? Theme.marigold : Theme.ash
+            border.width: model.running ? 0 : 1
+            border.color: Theme.cardRule
+            Text { id: tagText; anchors.centerIn: parent; text: model.running ? qsTr("RUNNING NOW") : qsTr("APP"); color: Theme.ink; font.family: Theme.monoFont; font.pixelSize: 11 }
         }
         Text {
-            anchors { right: parent.right; bottom: parent.bottom; margins: 14 }
+            id: titleText
+            x: 19
+            y: tag.y + tag.height + 10
+            width: parent.width - 38
+            text: model.name
+            color: Theme.ink
+            font.family: Theme.sansFont
+            font.weight: Font.Bold
+            font.pixelSize: parent.big ? 24 : 20
+            font.letterSpacing: parent.big ? -0.5 : -0.4
+            lineHeightMode: Text.FixedHeight
+            lineHeight: parent.big ? 31 : 26
+            elide: Text.ElideRight
+        }
+        Text {
+            x: 19
+            y: titleText.y + titleText.height + 4
+            width: parent.width - 60
+            text: model.running ? qsTr("resume · or quit it from Options") : qsTr("launch")
+            color: Theme.stone
+            font.family: Theme.monoFont
+            font.pixelSize: 13
+            lineHeightMode: Text.FixedHeight
+            lineHeight: 17
+            elide: Text.ElideRight
+        }
+        Text {
+            anchors { right: parent.right; bottom: parent.bottom; rightMargin: 17; bottomMargin: 14 }
             text: "→"; color: Theme.ink; font.family: Theme.sansFont; font.pixelSize: 18
         }
 

@@ -5,7 +5,8 @@ import DeckVoidTheme 1.0
 // App tile: a flat kit card (docs/design/KIT.md) with a focus outline.
 ItemDelegate {
     id: tile
-    property GridView grid
+    // A GridView or a ListView (the Apps row)
+    property Item grid
     readonly property bool lifted: highlighted || (Theme.mouseMode && hovered)
 
     highlighted: grid.activeFocus && grid.currentItem === this
@@ -32,16 +33,18 @@ ItemDelegate {
     }
 
     Keys.onLeftPressed: {
-        grid.moveCurrentIndexLeft()
+        if (grid.moveCurrentIndexLeft) grid.moveCurrentIndexLeft()
+        else grid.decrementCurrentIndex()
     }
     Keys.onRightPressed: {
-        grid.moveCurrentIndexRight()
+        if (grid.moveCurrentIndexRight) grid.moveCurrentIndexRight()
+        else grid.incrementCurrentIndex()
     }
     Keys.onDownPressed: {
-        grid.moveCurrentIndexDown()
+        if (grid.moveCurrentIndexDown) grid.moveCurrentIndexDown()
     }
     Keys.onUpPressed: {
-        grid.moveCurrentIndexUp()
+        if (grid.moveCurrentIndexUp) grid.moveCurrentIndexUp()
 
         // If we've reached the top of the grid, move focus to the toolbar
         if (grid.currentItem === this) {

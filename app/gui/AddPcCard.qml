@@ -30,38 +30,38 @@ Item {
         border.color: Theme.cardRule
         clip: true
 
+        // Figma: 260 x 263, ash block 150 tall, text 19 px from the left
         Rectangle {
             id: block
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }
-            height: Math.round(parent.height * 0.5)
+            x: 1; y: 1
+            width: parent.width - 2
+            height: 150
             color: Theme.ash
             Text {
-                anchors { left: parent.left; bottom: parent.bottom; leftMargin: 18; bottomMargin: 6 }
+                x: 18
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 18
                 text: "+"
                 color: Theme.ink
                 font.family: Theme.sansFont
                 font.weight: Font.Light
                 font.pixelSize: 96
-                lineHeight: 0.8
+                lineHeightMode: Text.FixedHeight
+                lineHeight: 68
+                verticalAlignment: Text.AlignBottom
             }
         }
-
-        Column {
-            anchors { left: parent.left; right: parent.right; top: block.bottom; margins: 18 }
-            spacing: 0
-            Rectangle {
-                width: manualText.implicitWidth + 14; height: 20
-                color: Theme.vermilion
-                Text { id: manualText; anchors.centerIn: parent; text: qsTr("MANUAL"); color: Theme.bone; font.family: Theme.monoFont; font.pixelSize: 11 }
-            }
-            Item { width: 1; height: 10 }
-            Text { text: qsTr("Add a PC"); color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Bold; font.pixelSize: 20; font.letterSpacing: -0.4 }
-            Item { width: 1; height: 4 }
-            Text { width: parent.width; text: qsTr("by name or IP address"); color: Theme.stone; font.family: Theme.monoFont; font.pixelSize: 12; elide: Text.ElideRight }
+        Rectangle {
+            id: manualTag
+            x: 19; y: 167
+            width: manualText.implicitWidth + 14; height: 20
+            color: Theme.vermilion
+            Text { id: manualText; anchors.centerIn: parent; text: qsTr("MANUAL"); color: Theme.bone; font.family: Theme.monoFont; font.pixelSize: 11 }
         }
-
+        Text { x: 19; y: 197; text: qsTr("Add a PC"); color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Bold; font.pixelSize: 20; font.letterSpacing: -0.4; lineHeightMode: Text.FixedHeight; lineHeight: 26 }
+        Text { x: 19; y: 227; width: parent.width - 60; text: qsTr("by name or IP address"); color: Theme.stone; font.family: Theme.monoFont; font.pixelSize: 13; lineHeightMode: Text.FixedHeight; lineHeight: 17; elide: Text.ElideRight }
         Text {
-            anchors { right: parent.right; bottom: parent.bottom; margins: 16 }
+            anchors { right: parent.right; bottom: parent.bottom; rightMargin: 17; bottomMargin: 14 }
             text: "→"
             color: Theme.ink
             font.family: Theme.sansFont

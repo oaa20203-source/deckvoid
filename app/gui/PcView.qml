@@ -238,9 +238,9 @@ FocusScope {
         Column {
             id: content
             x: Theme.pageGutter
-            y: Theme.controllerMode ? 34 : 28
+            y: 28
             width: flick.width - 2 * Theme.pageGutter
-            spacing: 24
+            spacing: 28   // Figma: 28 px title -> cards
 
             Row {
                 spacing: 24
@@ -289,7 +289,7 @@ FocusScope {
                 width: parent.width
                 spacing: Theme.gridGap
                 readonly property real cardWidth: pcView.hostCardWidth
-                readonly property real cardHeight: 236
+                readonly property real cardHeight: 238
 
                 Repeater {
                     id: hostRepeater
@@ -416,7 +416,7 @@ FocusScope {
                 AddPcCard {
                     id: addCard
                     width: Math.min(260, grid.width)
-                    height: grid.cardHeight
+                    height: 263
                     selected: pcView.currentIndex === hostRepeater.count && pcView.activeFocus
                     onSelectRequested: pcView.currentIndex = hostRepeater.count
                     onActivated: addPcDialog.open()

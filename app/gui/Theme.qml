@@ -22,6 +22,7 @@ QtObject {
     readonly property color marigold: "#F4C33F"
     readonly property color cobalt: "#3B6FD6"
     readonly property color moss: "#5F733C"
+    readonly property color pink: "#E87FAE"     // mijonju pink (Overlay settings block)
     readonly property color olive: "#454539"
     readonly property color rule: Qt.rgba(17/255, 17/255, 17/255, 0.18)
     readonly property color cardRule: Qt.rgba(17/255, 17/255, 17/255, 0.25)
@@ -86,7 +87,7 @@ QtObject {
     readonly property int headerHeight: 64
     readonly property int footerHeight: 44
     readonly property int minHitTarget: mouseMode ? 28 : 44
-    readonly property int pageGutter: controllerMode ? 40 : 32
+    readonly property int pageGutter: 32   // Figma: 32 px side margin on every screen
     readonly property int gridGap: 20
     readonly property int cardPadding: 18
     readonly property int statusStrip: 7
