@@ -441,7 +441,6 @@ ApplicationWindow {
                 id: addPcButton
                 visible: Theme.mouseMode && stackView.currentItem instanceof PcView
                 text: qsTr("+  Add PC")
-                shortcutHint: "⌘N"
                 anchors.verticalCenter: parent.verticalCenter
                 onClicked: addPcDialog.open()
             }
