@@ -266,7 +266,10 @@ FocusScope {
                 columnSpacing: Theme.gridGap
                 rowSpacing: Theme.gridGap + 8
                 readonly property real cardWidth: (width - (columns - 1) * columnSpacing) / columns
-                readonly property real cardHeight: Math.round(cardWidth * (Theme.touchMode ? 1.18 : (Theme.mouseMode ? 0.8 : 0.94)))
+                // Every card is as tall as its content needs (see HostCard.preferredHeight).
+                readonly property real cardHeight: hostRepeater.count > 0 && hostRepeater.itemAt(0)
+                                                   ? Math.ceil(hostRepeater.itemAt(0).card.preferredHeight)
+                                                   : Math.round(cardWidth * 0.94)
 
                 Repeater {
                     id: hostRepeater

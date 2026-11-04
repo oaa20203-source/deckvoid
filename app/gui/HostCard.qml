@@ -68,7 +68,14 @@ Item {
                                        : (status === "asleep" && wakeable ? qsTr("Wake") : "")
     readonly property bool showAction: actionText !== "" && (Theme.touchMode || (Theme.mouseMode && hovered))
 
-    implicitHeight: 300
+    // Mouse and touch reserve a row at the bottom for the action buttons so they
+    // never cover the text; the grid sizes every card to preferredHeight.
+    readonly property bool reservesActionRow: Theme.mouseMode || Theme.touchMode
+    readonly property real heroHeight: Math.round(width * (Theme.controllerMode ? 0.44 : 0.36))
+    readonly property real actionRowHeight: Theme.mouseMode ? 36 : 48
+    readonly property real preferredHeight: heroHeight + textBlock.anchors.topMargin + textBlock.implicitHeight
+                                            + (reservesActionRow ? 14 + actionRowHeight : 0) + Theme.cardPadding + 4
+    implicitHeight: preferredHeight
 
     // Focus / hover lift: scale and rise with a soft shadow and a thin mango glow.
     transform: Translate { y: card.lifted ? (Theme.controllerMode ? -6 : -4) : 0
@@ -110,7 +117,7 @@ Item {
         Item {
             id: hero
             anchors { left: parent.left; right: parent.right; top: parent.top }
-            height: Math.round(card.height * 0.44)
+            height: card.heroHeight
             readonly property color tint: card.status === "ready" ? Theme.accentTint : Theme.surfaceMuted
             // Rounded top corners that follow the card, square bottom edge
             Rectangle { anchors.fill: parent; radius: Theme.radiusCard; color: hero.tint }
@@ -135,6 +142,7 @@ Item {
         }
 
         Column {
+            id: textBlock
             anchors { left: parent.left; right: parent.right; top: hero.bottom }
             anchors.leftMargin: Theme.cardPadding + 4
             anchors.rightMargin: Theme.cardPadding
@@ -177,6 +185,8 @@ Item {
                 wrapMode: Text.Wrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
+                // Always reserve two lines so every card has the same height.
+                height: Math.ceil(fontInfo.pixelSize * 1.35) * 2
             }
         }
 
@@ -191,7 +201,6 @@ Item {
                 width: parent.width - (moreButton.visible ? moreButton.width + parent.spacing : 0)
                 text: card.actionText
                 primary: card.status === "ready"
-                shortcutHint: card.status === "ready" ? "⏎" : ""
                 onClicked: card.status === "asleep" ? card.wakeRequested() : card.activated()
             }
             Rectangle {
