@@ -818,6 +818,9 @@ int main(int argc, char *argv[])
     }
 
     QGuiApplication app(argc, argv);
+    // The name people see. Organization and application names stay "DeckVoid"
+    // above, because they decide where settings and paired PCs are stored.
+    QGuiApplication::setApplicationDisplayName(QStringLiteral("!ink"));
 
     // DeckVoid uses a light theme everywhere. Without this, native macOS menus and
     // dropdowns follow the system dark mode and clash with the light UI.

@@ -68,7 +68,7 @@ public:
     // overlay's 1024-byte buffer; trailing items are dropped if needed.
     QByteArray text() const
     {
-        QByteArray out = "DeckVoid menu   (A/Enter select, B/Esc close)\n\n";
+        QByteArray out = "!ink menu   (A/Enter select, B/Esc close)\n\n";
         for (int i = 0; i < m_Items.size(); i++) {
             const QByteArray line = (i == m_Selected ? "> " : "   ") + m_Items[i].label.toUtf8() + "\n";
             if (out.size() + line.size() > kMaxText) {

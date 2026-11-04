@@ -1,6 +1,6 @@
-# DeckVoid
+# !ink (link)
 
-DeckVoid is a game streaming client for the **Steam Deck OLED**, built for
+!ink ("link", formerly DeckVoid) is a game streaming client for the **Steam Deck OLED**, built for
 [Apollo](https://github.com/ClassicOldSong/Apollo) and
 [Vibepollo](https://github.com/Nonary/Vibepollo) hosts. It also works with Sunshine.
 
@@ -37,13 +37,13 @@ Enter after each command.
 
 ### 3. Make sure Flathub is available
 
-DeckVoid's runtime libraries come from Flathub.
+!ink's runtime libraries come from Flathub.
 
 ```sh
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
-### 4. Download DeckVoid
+### 4. Download !ink
 
 ```sh
 curl -L -o ~/Downloads/DeckVoid-x86_64.flatpak https://github.com/oaa20203-source/deckvoid/releases/latest/download/DeckVoid-x86_64.flatpak
@@ -75,20 +75,20 @@ flatpak run io.github.oaa20203_source.deckvoid
 ### 7. Add it to Steam
 
 Open **Steam** on the desktop, choose **Games** → **Add a Non-Steam Game to My
-Library**, tick **DeckVoid**, and press **Add Selected Programs**.
+Library**, tick **!ink**, and press **Add Selected Programs**.
 
 ### 8. Back to Gaming Mode
 
-Double-click **Return to Gaming Mode** on the desktop. DeckVoid is in your
+Double-click **Return to Gaming Mode** on the desktop. !ink is in your
 **Library** under **Non-Steam**.
 
 ### 9. Pair with your PC
 
-Start DeckVoid. Your PC appears on the PCs screen (or choose **Add a PC** and type
-its IP address). Select it and DeckVoid shows a 4-digit PIN; on the PC, open
+Start !ink. Your PC appears on the PCs screen (or choose **Add a PC** and type
+its IP address). Select it and !ink shows a 4-digit PIN; on the PC, open
 Vibepollo's web page (**https://localhost:47990**), go to **PIN**, and type it in.
 
-DeckVoid has its own settings and app ID (`io.github.oaa20203_source.deckvoid`),
+!ink has its own settings and app ID (`io.github.oaa20203_source.deckvoid`),
 so it sits next to stock Moonlight. PCs paired in Moonlight aren't carried over.
 
 ### Updating

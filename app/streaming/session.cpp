@@ -2232,7 +2232,7 @@ void Session::exec()
 #ifdef Q_OS_DARWIN
     std::string windowName = QString(m_Computer->name).toStdString();
 #else
-    std::string windowName = QString(m_Computer->name + " - Moonlight").toStdString();
+    std::string windowName = QString(m_Computer->name + " - !ink").toStdString();
 #endif
 
     m_Window = SDL_CreateWindow(windowName.c_str(),

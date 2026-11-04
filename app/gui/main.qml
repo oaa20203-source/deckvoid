@@ -311,7 +311,7 @@ ApplicationWindow {
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: 20
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "DeckVoid"
+                    text: "!ink"
                     color: Theme.ink
                     font.family: Theme.sansFont
                     font.weight: Font.Bold
@@ -391,7 +391,7 @@ ApplicationWindow {
                 }
             }
             ToolTip.visible: updateArea.containsMouse
-            ToolTip.text: qsTr("Update available for DeckVoid: Version %1").arg(updateVersion)
+            ToolTip.text: qsTr("Update available for !ink: Version %1").arg(updateVersion)
 
             function updateAvailable(version, url) {
                 updateButton.browserUrl = url
