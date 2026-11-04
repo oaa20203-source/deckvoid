@@ -5,7 +5,9 @@
 	<key>GCSupportsGameMode</key>
 	<true/>
 	<key>CFBundleExecutable</key>
-	<string>DeckVoid</string>
+	<string>!ink</string>
+	<key>CFBundleName</key>
+	<string>!ink</string>
 	<key>LSSupportsGameMode</key>
 	<true/>
 	<key>CFBundleGetInfoString</key>

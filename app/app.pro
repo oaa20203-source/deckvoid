@@ -4,8 +4,10 @@ CONFIG += c++17
 unix:!macx {
     TARGET = deckvoid
 } else {
-    # On macOS, this is the name displayed in the global menu bar
-    TARGET = DeckVoid
+    # On macOS this names the bundle (!ink.app) and the executable. Settings and
+    # paired PCs stay under the Qt names set in main.cpp ("DeckVoid"), and the
+    # bundle ID stays io.github.oaa20203-source.deckvoid, so nothing is lost.
+    TARGET = !ink
 }
 
 include(../globaldefs.pri)
