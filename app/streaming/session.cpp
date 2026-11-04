@@ -2087,7 +2087,7 @@ bool Session::startConnectionAsync()
 
     // Adapt the bitrate to the link (PyroWave has its own rate control)
     if (!(m_SupportedVideoFormats & VIDEO_FORMAT_MASK_PYROWAVE)) {
-        BitrateAdapter::start(m_Computer, m_StreamConfig.bitrate);
+        BitrateAdapter::start(m_Computer, m_StreamConfig.bitrate, m_StreamConfig.fps);
     }
     emit connectionStarted();
     return true;

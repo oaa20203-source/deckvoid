@@ -212,6 +212,7 @@ SOURCES += \
     streaming/input/reltouch.cpp \
     streaming/session.cpp \
     streaming/bitrateadapter.cpp \
+    streaming/bitratepolicy.cpp \
     streaming/gpuperformancehold.cpp \
     streaming/gamescopecomposition.cpp \
     streaming/audio/audio.cpp \
@@ -235,6 +236,7 @@ SOURCES += \
 
 HEADERS += \
     streaming/bitrateadapter.h \
+    streaming/bitratepolicy.h \
     streaming/video/videothreadpriority.h \
     streaming/video/timinggraph.h \
     streaming/input/dualsensehid.h \

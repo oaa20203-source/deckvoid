@@ -11,6 +11,8 @@ contains(CONFIG, tests) {
     SUBDIRS += launchWarning
     apollo.file = $$PWD/apollo/apollo.pro
     SUBDIRS += apollo
+    bitratePolicy.file = $$PWD/streaming/bitratepolicy.pro
+    SUBDIRS += bitratePolicy
     SUBDIRS += updates
     SUBDIRS += vrr
     SUBDIRS += haptics
