@@ -54,6 +54,7 @@ public:
         Session* session;
         NvApp app;
 
+        qInfo() << "CLI launcher event" << (int)event.type << "state" << (int)m_State;
         switch (event.type) {
         // Occurs when CliStartStreamSegue becomes visible and the UI calls launcher's execute()
         case Event::Executed:
@@ -97,6 +98,7 @@ public:
         case Event::ComputerUpdated:
             if (m_State == StateSeekApp) {
                 int index = getAppIndex();
+                qInfo() << "CLI launcher: app list" << m_Computer->appList.length() << "index" << index << "current game" << m_Computer->currentGameId;
                 if (-1 != index) {
                     app = m_Computer->appList[index];
                     m_TimeoutTimer->stop();

@@ -1799,9 +1799,13 @@ IFFmpegRenderer* FFmpegVideoDecoder::createHwAccelRenderer(const AVCodecHWConfig
                     params->renderer == StreamingPreferences::RS_AUTO) {
                 return VTMetalRendererFactory::createRenderer(true);
             }
-            // Prefer the libplacebo (on MoltenVK) renderer unless explicitly opted out
+            // DeckVoid: Auto uses native Metal. Measured on an M5 Pro at
+            // 3024x1964x120 HEVC (2026-11-04): libplacebo on MoltenVK showed
+            // 115.7 of 118.8 incoming FPS with 3.9-7.1 ms frame queue delay;
+            // Metal showed every frame (119.2 of 119.2) with ~0 ms queue delay.
+            // Vulkan stays available when selected explicitly.
 #ifdef HAVE_LIBPLACEBO_VULKAN
-            if (params->renderer == StreamingPreferences::RS_AUTO || params->renderer == StreamingPreferences::RS_VULKAN) {
+            if (params->renderer == StreamingPreferences::RS_VULKAN) {
                 return new PlVkRenderer(hwDecodeCfg->device_type);
             }
 #endif
