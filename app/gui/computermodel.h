@@ -17,7 +17,13 @@ class ComputerModel : public QAbstractListModel
         WakeableRole,
         StatusUnknownRole,
         ServerSupportedRole,
-        DetailsRole
+        DetailsRole,
+        // DeckVoid redesign (docs/design/DESIGN.md)
+        HostKindRole,          // "Apollo", "Sunshine", "GeForce Experience"
+        RunningAppRole,        // name of the app this device is running on the host, or ""
+        AddressRole,           // active address without the port
+        VirtualDisplayRole,    // short summary, "" when the host has no virtual display
+        PermissionsSummaryRole // e.g. "Launch · Clipboard · Commands", "" when unknown
     };
 
 public:

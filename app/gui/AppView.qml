@@ -308,6 +308,16 @@ import AppModel 1.0; AppModel {}', parent, '')
             }
         }
 
+        // Controller X (sent as F13) keeps opening this menu, like Start.
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_F13) {
+                if (model.sleepAction) {
+                    if (!appGrid.sleepPending) sleepDialog.open()
+                } else appContextMenu.open()
+                event.accepted = true
+            }
+        }
+
         Keys.onMenuPressed: {
             // This will be keyboard/gamepad driven so use open() instead of popup()
             if (model.sleepAction) {

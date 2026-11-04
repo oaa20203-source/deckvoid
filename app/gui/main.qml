@@ -1,6 +1,6 @@
-import QtQuick 2.9
-import QtQuick.Controls 2.2
-import QtQuick.Layouts 1.3
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 import QtQuick.Window 2.2
 import QtQuick.Controls.Material 2.2
 
@@ -9,6 +9,7 @@ import AutoUpdateChecker 1.0
 import StreamingPreferences 1.0
 import SystemProperties 1.0
 import SdlGamepadKeyNavigation 1.0
+import DeckVoidTheme 1.0
 
 ApplicationWindow {
     property bool pollingActive: false
@@ -19,17 +20,19 @@ ApplicationWindow {
     property bool clearOnBack: false
 
     id: window
-    width: 1280
-    height: 600
+    color: Theme.background
+    width: devWindowSize ? devWindowSize.width : 1280
+    height: devWindowSize ? devWindowSize.height : 600
 
     // This function runs prior to creation of the initial StackView item
     function doEarlyInit() {
         // Override the background color to Material 2 colors for Qt 6.5+
         // in order to improve contrast between GFE's placeholder box art
         // and the background of the app grid.
-        if (SystemProperties.usesMaterial3Theme) {
-            Material.background = "#303030"
-        }
+        Material.theme = Material.Light
+        Material.accent = Theme.accent
+        Material.background = Theme.background
+        Material.foreground = Theme.text
 
         SdlGamepadKeyNavigation.enable()
     }
@@ -144,14 +147,26 @@ ApplicationWindow {
         }
 
         Keys.onMenuPressed: {
-            settingsButton.clicked()
+            showSettings()
+        }
+
+        // L1 / R1 switch the Hosts and Settings tabs (sent as F15 / F16).
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_F15) {
+                showHosts()
+                event.accepted = true
+            }
+            else if (event.key === Qt.Key_F16) {
+                showSettings()
+                event.accepted = true
+            }
         }
 
         // This is a keypress we've reserved for letting the
         // SdlGamepadKeyNavigation object tell us to show settings
         // when Menu is consumed by a focused control.
         Keys.onHangupPressed: {
-            settingsButton.clicked()
+            showSettings()
         }
     }
 
@@ -233,239 +248,250 @@ ApplicationWindow {
         }
     }
 
-    header: ToolBar {
-        id: toolBar
-        height: 60
-        anchors.topMargin: 5
-        anchors.bottomMargin: 5
+    // Tabs: Hosts is the root of the stack, Settings is pushed on top.
+    readonly property bool settingsTab: stackView.currentItem instanceof SettingsView
+    function showHosts() {
+        if (stackView.depth > 1) {
+            stackView.pop(null)
+        }
+    }
+    function showSettings() {
+        navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
+    }
 
-        Label {
-            id: titleLabel
-            visible: toolBar.width > 700
-            anchors.fill: parent
-            text: stackView.currentItem.objectName
-            font.pointSize: 20
-            elide: Label.ElideRight
-            horizontalAlignment: Qt.AlignHCenter
-            verticalAlignment: Qt.AlignVCenter
+    header: Rectangle {
+        id: toolBar
+        height: Theme.mouseMode ? 64 : 76
+        color: Theme.mouseMode ? Theme.surfaceMuted : Theme.background
+
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
+
+        // Left: back (inside a host's apps) and the DeckVoid logo
+        Row {
+            anchors.left: parent.left
+            anchors.leftMargin: Theme.pageGutter
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 14
+
+            Rectangle {
+                id: backButton
+                visible: stackView.depth > 1 && !window.settingsTab
+                width: 40; height: 40; radius: 20
+                color: backArea.containsMouse ? Theme.chip : "transparent"
+                anchors.verticalCenter: parent.verticalCenter
+                Text { anchors.centerIn: parent; text: "‹"; color: Theme.text; font.pixelSize: 30; font.weight: Font.Bold; anchors.verticalCenterOffset: -2 }
+                MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: goBack() }
+            }
+
+            // Logo: mango ring with an orchid dot
+            Rectangle {
+                width: 34; height: 34; radius: 17
+                color: "transparent"
+                border.color: Theme.accent; border.width: 4
+                anchors.verticalCenter: parent.verticalCenter
+                Rectangle { anchors.centerIn: parent; width: 13; height: 13; radius: 7; color: Theme.secondary }
+            }
+            Text {
+                text: "DeckVoid"
+                color: Theme.text
+                font.family: Theme.headingFont
+                font.weight: Font.ExtraBold
+                font.pixelSize: Theme.mouseMode ? 24 : 28
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
 
-        RowLayout {
-            spacing: 10
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
-            anchors.fill: parent
-
-            NavigableToolButton {
-                // Only make the button visible if the user has navigated somewhere.
-                visible: stackView.depth > 1
-
-                iconSource: "qrc:/res/arrow_left.svg"
-
-                onClicked: goBack()
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
+        // Centre: Hosts / Settings
+        Row {
+            id: controllerTabs
+            visible: Theme.controllerMode
+            anchors.centerIn: parent
+            spacing: 18
+            DvGlyph { glyph: "L1"; anchors.verticalCenter: parent.verticalCenter }
+            Repeater {
+                model: [qsTr("Hosts"), qsTr("Settings")]
+                delegate: Item {
+                    readonly property bool active: index === 1 ? window.settingsTab : !window.settingsTab
+                    width: tabText.implicitWidth + 36
+                    height: toolBar.height
+                    Text {
+                        id: tabText
+                        anchors.centerIn: parent
+                        text: modelData
+                        color: parent.active ? Theme.text : Theme.textMuted
+                        font.family: Theme.bodyFont
+                        font.weight: parent.active ? Font.Bold : Font.DemiBold
+                        font.pixelSize: Theme.tab
+                    }
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width; height: 3; radius: 1.5
+                        color: Theme.secondary
+                        visible: parent.active
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: index === 1 ? showSettings() : showHosts() }
                 }
             }
+            DvGlyph { glyph: "R1"; anchors.verticalCenter: parent.verticalCenter }
+        }
 
-            // This label will appear when the window gets too small and
-            // we need to ensure the toolbar controls don't collide
-            Label {
-                id: titleRowLabel
-                font.pointSize: titleLabel.font.pointSize
-                elide: Label.ElideRight
-                horizontalAlignment: Qt.AlignHCenter
-                verticalAlignment: Qt.AlignVCenter
-                Layout.fillWidth: true
-
-                // We need this label to always be visible so it can occupy
-                // the remaining space in the RowLayout. To "hide" it, we
-                // just set the text to empty string.
-                text: !titleLabel.visible ? stackView.currentItem.objectName : ""
-            }
-
-            Label {
-                id: versionLabel
-                visible: stackView.currentItem instanceof SettingsView
-                text: qsTr("Version %1").arg(SystemProperties.versionString)
-                font.pointSize: 12
-                horizontalAlignment: Qt.AlignRight
-                verticalAlignment: Qt.AlignVCenter
-            }
-
-            NavigableToolButton {
-                id: discordButton
-                visible: SystemProperties.hasBrowser &&
-                         stackView.currentItem instanceof SettingsView
-
-                iconSource: "qrc:/res/discord.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Join our community on Discord")
-
-                // TODO need to make sure browser is brought to foreground.
-                onClicked: Qt.openUrlExternally("https://moonlight-stream.org/discord");
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                id: addPcButton
-                visible: stackView.currentItem instanceof PcView
-
-                iconSource:  "qrc:/res/ic_add_to_queue_white_48px.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Add PC manually") + (newPcShortcut.nativeText ? (" ("+newPcShortcut.nativeText+")") : "")
-
-                Shortcut {
-                    id: newPcShortcut
-                    sequence: StandardKey.New
-                    onActivated: addPcButton.clicked()
-                }
-
-                onClicked: {
-                    addPcDialog.open()
-                }
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                property string browserUrl: ""
-                property string updateVersion: ""
-
-                id: updateButton
-
-                iconSource: "qrc:/res/update.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered || visible
-
-                // Invisible until we get a callback notifying us that
-                // an update is available
-                visible: false
-
-                onClicked: {
-                    if (SystemProperties.hasBrowser) {
-                        Qt.openUrlExternally(browserUrl);
-                        AutoUpdateChecker.dismissUpdate(updateVersion)
-                        visible = false
+        Rectangle {
+            id: segmentedTabs
+            visible: !Theme.controllerMode
+            anchors.centerIn: parent
+            width: segRow.width + 8; height: Theme.mouseMode ? 40 : 52
+            radius: Theme.mouseMode ? 10 : 18
+            color: Theme.chip
+            Row {
+                id: segRow
+                anchors.centerIn: parent
+                Repeater {
+                    model: [qsTr("Hosts"), qsTr("Settings")]
+                    delegate: Rectangle {
+                        readonly property bool active: index === 1 ? window.settingsTab : !window.settingsTab
+                        width: segText.implicitWidth + (Theme.mouseMode ? 52 : 76)
+                        height: segmentedTabs.height - 8
+                        radius: segmentedTabs.radius - 3
+                        color: active ? Theme.surface : "transparent"
+                        Text {
+                            id: segText
+                            anchors.centerIn: parent
+                            text: modelData
+                            color: parent.active ? Theme.text : Theme.textMuted
+                            font.family: Theme.bodyFont
+                            font.weight: Font.Bold
+                            font.pixelSize: Theme.tab
+                        }
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: index === 1 ? showSettings() : showHosts() }
                     }
                 }
+            }
+        }
 
-                Menu {
-                    id: updateMenu
-                    MenuItem {
-                        text: qsTr("Dismiss this update")
-                        onTriggered: {
+        // Right: update notice, help, add PC
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: Theme.pageGutter
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
+
+            Rectangle {
+                id: updateButton
+                property string browserUrl: ""
+                property string updateVersion: ""
+                visible: false
+                height: 34; width: updateText.implicitWidth + 28; radius: 17
+                color: Theme.accentTint
+                border.color: Theme.accent
+                anchors.verticalCenter: parent.verticalCenter
+                Text { id: updateText; anchors.centerIn: parent; text: qsTr("Update available"); color: Theme.text; font.family: Theme.bodyFont; font.weight: Font.Bold; font.pixelSize: 14 }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function(mouse) {
+                        if (mouse.button === Qt.RightButton) {
+                            AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
+                            updateButton.visible = false
+                        }
+                        else if (SystemProperties.hasBrowser) {
+                            Qt.openUrlExternally(updateButton.browserUrl)
                             AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
                             updateButton.visible = false
                         }
                     }
                 }
-                onPressAndHold: updateMenu.open()
+                ToolTip.visible: updateHover.hovered
+                ToolTip.text: qsTr("Update available for DeckVoid: Version %1").arg(updateVersion)
+                HoverHandler { id: updateHover }
 
-                function updateAvailable(version, url)
-                {
-                    ToolTip.text = qsTr("Update available for Moonlight: Version %1").arg(version)
+                function updateAvailable(version, url) {
                     updateButton.browserUrl = url
                     updateButton.updateVersion = version
                     updateButton.visible = true
                 }
-
                 Connections {
                     target: AutoUpdateChecker
-                    onNotifyPrereleasesChanged: {
+                    function onNotifyPrereleasesChanged() {
                         updateButton.visible = false
                         AutoUpdateChecker.start()
                     }
                 }
-
                 Component.onCompleted: {
                     AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
                     AutoUpdateChecker.start()
                 }
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
             }
 
-            NavigableToolButton {
+            Rectangle {
                 id: helpButton
-                visible: SystemProperties.hasBrowser
-
-                iconSource: "qrc:/res/question_mark.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Help") + (helpShortcut.nativeText ? (" ("+helpShortcut.nativeText+")") : "")
-
-                Shortcut {
-                    id: helpShortcut
-                    sequence: StandardKey.HelpContents
-                    onActivated: helpButton.clicked()
-                }
-
-                // TODO need to make sure browser is brought to foreground.
-                onClicked: Qt.openUrlExternally("https://github.com/moonlight-stream/moonlight-docs/wiki/Setup-Guide");
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
+                visible: Theme.mouseMode && SystemProperties.hasBrowser
+                width: 36; height: 36; radius: 18
+                color: helpArea.containsMouse ? Theme.chip : "transparent"
+                border.color: Theme.lineStrong; border.width: 1
+                anchors.verticalCenter: parent.verticalCenter
+                Text { anchors.centerIn: parent; text: "?"; color: Theme.textSecondary; font.family: Theme.bodyFont; font.weight: Font.Bold; font.pixelSize: 17 }
+                MouseArea { id: helpArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: helpButton.open() }
+                function open() { Qt.openUrlExternally("https://github.com/oaa20203-source/deckvoid#readme") }
+                Shortcut { sequence: StandardKey.HelpContents; onActivated: helpButton.open() }
             }
 
-            NavigableToolButton {
-                // TODO: Implement gamepad mapping then unhide this button
-                visible: false
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Gamepad Mapper")
-
-                iconSource: "qrc:/res/ic_videogame_asset_white_48px.svg"
-
-                onClicked: navigateTo("qrc:/gui/GamepadMapper.qml", GamepadMapper)
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
+            DvButton {
+                id: addPcButton
+                visible: Theme.mouseMode && stackView.currentItem instanceof PcView
+                text: qsTr("+  Add PC")
+                shortcutHint: "⌘N"
+                anchors.verticalCenter: parent.verticalCenter
+                onClicked: addPcDialog.open()
             }
 
-            NavigableToolButton {
-                id: settingsButton
-
-                iconSource:  "qrc:/res/settings.svg"
-
-                onClicked: navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
+            Rectangle {
+                visible: Theme.touchMode && stackView.currentItem instanceof PcView
+                width: 56; height: 56; radius: 28
+                color: Theme.accent
+                anchors.verticalCenter: parent.verticalCenter
+                Item {
+                    anchors.centerIn: parent; width: 24; height: 24
+                    Rectangle { anchors.centerIn: parent; width: 24; height: 3.5; radius: 2; color: Theme.text }
+                    Rectangle { anchors.centerIn: parent; width: 3.5; height: 24; radius: 2; color: Theme.text }
                 }
+                MouseArea { anchors.fill: parent; onClicked: addPcDialog.open() }
+            }
+        }
 
-                Shortcut {
-                    id: settingsShortcut
-                    sequence: StandardKey.Preferences
-                    onActivated: settingsButton.clicked()
+        Shortcut { sequence: StandardKey.New; onActivated: addPcDialog.open() }
+        Shortcut { sequence: StandardKey.Preferences; onActivated: showSettings() }
+    }
+
+    // Controller button hints (controller mode only). Pages provide footerHints:
+    // a list of [glyph, label] pairs for the focused item.
+    footer: Rectangle {
+        readonly property var hints: stackView.currentItem && stackView.currentItem.footerHints !== undefined
+                                     ? stackView.currentItem.footerHints : []
+        visible: Theme.controllerMode && hints.length > 0
+        height: visible ? 66 : 0
+        color: Theme.surfaceMuted
+        Rectangle { width: parent.width; height: 1; color: Theme.line }
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: Theme.pageGutter
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 34
+            Repeater {
+                model: parent.parent.hints
+                delegate: Row {
+                    spacing: 12
+                    DvGlyph { glyph: modelData[0]; anchors.verticalCenter: parent.verticalCenter }
+                    Text {
+                        text: modelData[1]
+                        color: Theme.text
+                        font.family: Theme.bodyFont
+                        font.weight: Font.DemiBold
+                        font.pixelSize: Theme.row
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                 }
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Settings") + (settingsShortcut.nativeText ? (" ("+settingsShortcut.nativeText+")") : "")
             }
         }
     }

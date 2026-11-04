@@ -214,15 +214,24 @@ void SdlGamepadKeyNavigation::onPollingTimerFired()
             case SDL_CONTROLLER_BUTTON_B:
                 sendControllerKey(Qt::Key_Escape);
                 break;
+            // DeckVoid layout (docs/design/DESIGN.md): X and Y are per-screen actions
+            // (Hosts: pair with PIN, wake), Start opens the options menu, L1/R1 switch
+            // the Hosts/Settings tabs. Screens without an X/Y action ignore them;
+            // the app grid keeps X for its options menu.
             case SDL_CONTROLLER_BUTTON_X:
-                sendControllerKey(Qt::Key_Menu);
+                sendControllerKey(Qt::Key_F13);
                 break;
             case SDL_CONTROLLER_BUTTON_Y:
+                sendControllerKey(Qt::Key_F14);
+                break;
             case SDL_CONTROLLER_BUTTON_START:
-                // HACK: We use this keycode to inform main.qml
-                // to show the settings when Key_Menu is handled
-                // by the control in focus.
-                sendControllerKey(Qt::Key_Hangup);
+                sendControllerKey(Qt::Key_Menu);
+                break;
+            case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+                sendControllerKey(Qt::Key_F15);
+                break;
+            case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+                sendControllerKey(Qt::Key_F16);
                 break;
             default:
                 break;

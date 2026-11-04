@@ -1,6 +1,6 @@
 // DeckVoid light theme. Values come from docs/design/tokens.json; see docs/design/DESIGN.md.
 pragma Singleton
-import QtQuick 2.15
+import QtQuick
 import InputMode 1.0
 
 QtObject {

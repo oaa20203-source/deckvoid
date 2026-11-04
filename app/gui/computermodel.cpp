@@ -2,6 +2,7 @@
 #include "onlinecomputerentries.h"
 #include "backend/apollo/apollopermissions.h"
 #include "backend/apollo/apollootp.h"
+#include "settings/streamingpreferences.h"
 
 #include <QThreadPool>
 
@@ -53,6 +54,34 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
         return computer->state == NvComputer::CS_UNKNOWN;
     case ServerSupportedRole:
         return computer->isSupportedServerVersion;
+    case HostKindRole:
+        if (computer->isApollo()) return QStringLiteral("Apollo");
+        return computer->isNvidiaServerSoftware ? QStringLiteral("GeForce Experience") : QStringLiteral("Sunshine");
+    case RunningAppRole:
+        if (computer->currentGameId != 0) {
+            for (const NvApp& app : computer->appList) {
+                if (app.id == computer->currentGameId) return app.name;
+            }
+        }
+        return QString();
+    case AddressRole:
+        return computer->activeAddress.address();
+    case VirtualDisplayRole: {
+        if (!computer->isApollo() || !computer->apollo.virtualDisplayCapable) return QString();
+        const auto* prefs = StreamingPreferences::get();
+        const QString mode = QStringLiteral("%1×%2 at %3 Hz").arg(prefs->width).arg(prefs->height).arg(prefs->fps);
+        return computer->apollo.virtualDisplayDriverReady ? tr("Ready · %1").arg(mode) : tr("Driver not ready");
+    }
+    case PermissionsSummaryRole: {
+        if (!computer->isApollo() || !computer->apollo.permissionsKnown) return QString();
+        const uint32_t p = computer->apollo.permissions;
+        QStringList parts;
+        if (ApolloPermissions::has(p, ApolloPermissions::Launch)) parts << tr("Launch");
+        else if (ApolloPermissions::has(p, ApolloPermissions::View)) parts << tr("View");
+        if (p & (ApolloPermissions::ClipboardRead | ApolloPermissions::ClipboardSet)) parts << tr("Clipboard");
+        if (ApolloPermissions::has(p, ApolloPermissions::ServerCommand)) parts << tr("Commands");
+        return parts.isEmpty() ? tr("List only") : parts.join(QStringLiteral(" · "));
+    }
     case DetailsRole: {
         QString state, pairState;
 
@@ -166,6 +195,11 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[StatusUnknownRole] = "statusUnknown";
     names[ServerSupportedRole] = "serverSupported";
     names[DetailsRole] = "details";
+    names[HostKindRole] = "hostKind";
+    names[RunningAppRole] = "runningApp";
+    names[AddressRole] = "address";
+    names[VirtualDisplayRole] = "virtualDisplay";
+    names[PermissionsSummaryRole] = "permissionsSummary";
 
     return names;
 }
