@@ -236,8 +236,10 @@ import AppModel 1.0; AppModel {}', parent, '')
     Component {
         id: appDelegate
     NavigableItemDelegate {
-        // Figma sizes: running app 520 x 358 (art 240), others 300 x 263 (art 150)
-        readonly property bool big: model.running
+        // Figma sizes: the large card is 520 x 358 (art 240), others 300 x 263
+        // (art 150). Desktop is the large card (Omar: Figma's layout with
+        // Desktop and Steam swapped); every card in Others is small.
+        readonly property bool big: !appGrid.showOthers && (model.name || "").toLowerCase() === "desktop"
         width: big ? 520 : 300
         height: big ? 358 : 263
         padding: 0
@@ -345,7 +347,8 @@ import AppModel 1.0; AppModel {}', parent, '')
             x: 19
             y: titleText.y + titleText.height + 4
             width: parent.width - 60
-            text: model.running ? qsTr("resume · or quit it from Options") : qsTr("launch")
+            text: model.running ? qsTr("resume · or quit it from Options")
+                  : ((model.name || "").toLowerCase() === "desktop" ? qsTr("the whole Windows desktop") : qsTr("launch"))
             color: Theme.stone
             font.family: Theme.monoFont
             font.pixelSize: 13
