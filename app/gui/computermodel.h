@@ -38,6 +38,11 @@ public:
 
     Q_INVOKABLE void pairComputer(int computerIndex, QString pin);
 
+    // Apollo hosts: pair with a one-time PIN and passphrase created on the host
+    Q_INVOKABLE void pairComputerWithOtp(int computerIndex, QString pin, QString passphrase);
+    Q_INVOKABLE bool isApolloHost(int computerIndex);
+    Q_INVOKABLE bool isValidOtp(QString pin, QString passphrase);
+
     Q_INVOKABLE void testConnectionForComputer(int computerIndex);
 
     Q_INVOKABLE void wakeComputer(int computerIndex);

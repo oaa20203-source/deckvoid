@@ -194,6 +194,15 @@ CenteredGridView {
                 }
 
                 NavigableMenuItem {
+                    text: qsTr("Pair with PIN and Passphrase...")
+                    visible: model.online && !model.paired && computerModel.isApolloHost(index)
+                    height: visible ? implicitHeight : 0
+                    onTriggered: {
+                        otpPairDialog.pcIndex = index
+                        otpPairDialog.open()
+                    }
+                }
+                NavigableMenuItem {
                     text: qsTr("Rename PC")
                     onTriggered: {
                         renamePcDialog.pcIndex = index
@@ -239,6 +248,7 @@ CenteredGridView {
                     computerModel.pairComputer(index, pin)
 
                     // Display the pairing dialog
+                    pairDialog.otp = false
                     pairDialog.pin = pin
                     pairDialog.open()
                 }
@@ -294,8 +304,10 @@ CenteredGridView {
 
         // don't allow edits to the rest of the window while open
         property string pin : "0000"
-        text:qsTr("Please enter %1 on your host PC. This dialog will close when pairing is completed.").arg(pin)+"\n\n"+
-             qsTr("If your host PC is running Sunshine, navigate to the Sunshine web UI to enter the PIN.")
+        property bool otp: false
+        text: otp ? qsTr("Pairing with the one-time PIN... This dialog will close when pairing is completed.")
+                  : qsTr("Please enter %1 on your host PC. This dialog will close when pairing is completed.").arg(pin)+"\n\n"+
+                    qsTr("If your host PC is running Apollo, Vibepollo or Sunshine, enter the PIN in the host's web UI.")
         standardButtons: Dialog.Cancel
         onRejected: {
             // FIXME: We should interrupt pairing here
@@ -343,6 +355,63 @@ CenteredGridView {
 
             // Stop showing the spinner and show the image instead
             showSpinner = false
+        }
+    }
+
+    NavigableDialog {
+        id: otpPairDialog
+        property int pcIndex: -1
+
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        onOpened: otpPinField.forceActiveFocus()
+        onClosed: {
+            otpPinField.clear()
+            otpPassphraseField.clear()
+        }
+
+        onAccepted: {
+            if (!computerModel.isValidOtp(otpPinField.text, otpPassphraseField.text)) {
+                errorDialog.text = qsTr("Enter the 4-digit PIN and a passphrase of at least 4 characters.")
+                errorDialog.helpText = ""
+                errorDialog.open()
+                return
+            }
+            computerModel.pairComputerWithOtp(pcIndex, otpPinField.text, otpPassphraseField.text)
+            pairDialog.otp = true
+            pairDialog.open()
+        }
+
+        ColumnLayout {
+            Label {
+                text: qsTr("Pair with a one-time PIN")
+                font.bold: true
+            }
+
+            Label {
+                Layout.maximumWidth: 420
+                wrapMode: Text.Wrap
+                text: qsTr("Create a one-time PIN and passphrase on the host (Apollo: web UI, PIN page). Enter them here within 3 minutes. Nothing needs to be typed on the host afterwards.")
+            }
+
+            TextField {
+                id: otpPinField
+                Layout.fillWidth: true
+                placeholderText: qsTr("4-digit PIN")
+                inputMethodHints: Qt.ImhDigitsOnly
+                validator: RegularExpressionValidator { regularExpression: /[0-9]{0,4}/ }
+                maximumLength: 4
+                KeyNavigation.down: otpPassphraseField
+            }
+
+            TextField {
+                id: otpPassphraseField
+                Layout.fillWidth: true
+                placeholderText: qsTr("Passphrase")
+                echoMode: TextInput.Password
+                Keys.onReturnPressed: otpPairDialog.accept()
+                Keys.onEnterPressed: otpPairDialog.accept()
+            }
         }
     }
 

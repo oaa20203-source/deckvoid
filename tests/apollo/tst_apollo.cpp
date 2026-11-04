@@ -6,6 +6,7 @@
 #include "backend/applistparser.h"
 #include "backend/apollo/apollolaunchverb.h"
 #include "backend/apollo/apollolaunchoptions.h"
+#include "backend/apollo/apollootp.h"
 #include "backend/nvapp.h"
 
 #include <QSettings>
@@ -329,6 +330,29 @@ private slots:
         QCOMPARE(ApolloLaunchReply::classify(503, true), R::RetryAsLaunch);  // /resume: app already exited
         QCOMPARE(ApolloLaunchReply::classify(503, false), R::Error);
         QCOMPARE(ApolloLaunchReply::classify(500, true), R::Error);
+    }
+    void otpAuthHash()
+    {
+        // uppercase hex SHA-256(pin + saltHex + passphrase), as Vibepollo checks it
+        // (src/nvhttp.cpp:4054-4082); vector computed independently with Python hashlib.
+        QCOMPARE(ApolloOtp::otpAuth("1234", "00112233445566778899aabbccddeeff", "deck pass"),
+                 QByteArray("E6430A9EAE4B91FF8A9D372135174EBEF7B7855692830516C9B7BA2AF43906FC"));
+    }
+
+    void otpInputValidation()
+    {
+        QVERIFY(ApolloOtp::isValidPin("0042"));
+        QVERIFY(!ApolloOtp::isValidPin("042"));
+        QVERIFY(!ApolloOtp::isValidPin("12a4"));
+        QVERIFY(ApolloOtp::isValidPassphrase("abcd"));
+        QVERIFY(!ApolloOtp::isValidPassphrase("abc"));
+    }
+
+    void pairingDeviceName()
+    {
+        QCOMPARE(ApolloOtp::deviceNameArg("Omar's Deck"), QString("Omar%27s%20Deck"));
+        QCOMPARE(ApolloOtp::deviceNameArg(""), QString("roth"));       // stock fallback
+        QCOMPARE(ApolloOtp::deviceNameArg(" SELF "), QString("roth")); // host refuses "self"
     }
 };
 

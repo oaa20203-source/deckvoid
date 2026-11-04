@@ -14,7 +14,8 @@ public:
         PAIRED,
         PIN_WRONG,
         FAILED,
-        ALREADY_IN_PROGRESS
+        ALREADY_IN_PROGRESS,
+        OTP_UNAVAILABLE // Apollo: no one-time PIN active on the host, or it expired
     };
 
     explicit NvPairingManager(NvComputer* computer);
@@ -22,7 +23,8 @@ public:
     ~NvPairingManager();
 
     PairState
-    pair(QString appVersion, QString pin, QSslCertificate& serverCert);
+    pair(QString appVersion, QString pin, QSslCertificate& serverCert,
+         const QString& otpPassphrase = QString(), const QString& clientName = QString());
 
 private:
     QByteArray

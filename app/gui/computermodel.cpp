@@ -1,6 +1,7 @@
 #include "computermodel.h"
 #include "onlinecomputerentries.h"
 #include "backend/apollo/apollopermissions.h"
+#include "backend/apollo/apollootp.h"
 
 #include <QThreadPool>
 
@@ -267,6 +268,22 @@ void ComputerModel::testConnectionForComputer(int)
     QObject::connect(testConnectionTask, &DeferredTestConnectionTask::connectionTestCompleted,
                      this, &ComputerModel::connectionTestCompleted);
     QThreadPool::globalInstance()->start(testConnectionTask);
+}
+
+void ComputerModel::pairComputerWithOtp(int computerIndex, QString pin, QString passphrase)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+    m_ComputerManager->pairHost(m_Computers[computerIndex], pin, passphrase);
+}
+
+bool ComputerModel::isApolloHost(int computerIndex)
+{
+    return computerIndex >= 0 && computerIndex < m_Computers.count() && m_Computers[computerIndex]->isApollo();
+}
+
+bool ComputerModel::isValidOtp(QString pin, QString passphrase)
+{
+    return ApolloOtp::isValidPin(pin) && ApolloOtp::isValidPassphrase(passphrase);
 }
 
 void ComputerModel::pairComputer(int computerIndex, QString pin)

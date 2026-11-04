@@ -256,6 +256,8 @@ HEADERS += \
     backend/apollo/apollohostinfo.h \
     backend/apollo/apollopermissions.h \
     backend/apollo/apollolaunchverb.h \
+    backend/apollo/apollolaunchoptions.h \
+    backend/apollo/apollootp.h \
     backend/applistparser.h \
     backend/nvhttp.h \
     backend/poweractions.h \

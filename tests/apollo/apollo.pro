@@ -10,5 +10,6 @@ HEADERS += \
     $$PWD/../../app/backend/apollo/apollopermissions.h \
     $$PWD/../../app/backend/apollo/apollolaunchverb.h \
     $$PWD/../../app/backend/apollo/apollolaunchoptions.h \
+    $$PWD/../../app/backend/apollo/apollootp.h \
     $$PWD/../../app/backend/applistparser.h \
     $$PWD/../../app/backend/nvapp.h

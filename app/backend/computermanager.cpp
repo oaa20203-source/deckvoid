@@ -1,4 +1,5 @@
 #include "computermanager.h"
+#include "settings/streamingpreferences.h"
 #include "boxartmanager.h"
 #include "nvhttp.h"
 #include "nvpairingmanager.h"
@@ -579,10 +580,13 @@ class PendingPairingTask : public QObject, public QRunnable
     Q_OBJECT
 
 public:
-    PendingPairingTask(ComputerManager* computerManager, NvComputer* computer, QString pin)
+    PendingPairingTask(ComputerManager* computerManager, NvComputer* computer, QString pin,
+                       QString otpPassphrase = QString())
         : m_ComputerManager(computerManager),
           m_Computer(computer),
-          m_Pin(pin)
+          m_Pin(pin),
+          m_OtpPassphrase(otpPassphrase),
+          m_ClientName(StreamingPreferences::get()->apolloClientName)
     {
         connect(this, &PendingPairingTask::pairingCompleted,
                 computerManager, &ComputerManager::pairingCompleted);
@@ -597,11 +601,17 @@ private:
         NvPairingManager pairingManager(m_Computer);
 
         try {
-           NvPairingManager::PairState result = pairingManager.pair(m_Computer->appVersion, m_Pin, m_Computer->serverCert);
+           NvPairingManager::PairState result = pairingManager.pair(m_Computer->appVersion, m_Pin, m_Computer->serverCert,
+                                                                    m_OtpPassphrase, m_ClientName);
            switch (result)
            {
            case NvPairingManager::PairState::PIN_WRONG:
-               emit pairingCompleted(m_Computer, tr("The PIN from the PC didn't match. Please try again."));
+               emit pairingCompleted(m_Computer, m_OtpPassphrase.isEmpty()
+                   ? tr("The PIN from the PC didn't match. Please try again.")
+                   : tr("Pairing failed: the PIN or passphrase is wrong, or the PIN expired (3 minutes) or was already used. Generate a new PIN on the host and try again."));
+               break;
+           case NvPairingManager::PairState::OTP_UNAVAILABLE:
+               emit pairingCompleted(m_Computer, tr("The host has no active one-time PIN. It may have expired (3 minutes) or not been created. Generate a new PIN on the host and try again."));
                break;
            case NvPairingManager::PairState::FAILED:
                if (m_Computer->currentGameId != 0) {
@@ -631,13 +641,15 @@ private:
     ComputerManager* m_ComputerManager;
     NvComputer* m_Computer;
     QString m_Pin;
+    QString m_OtpPassphrase; // never logged
+    QString m_ClientName;
 };
 
-void ComputerManager::pairHost(NvComputer* computer, QString pin)
+void ComputerManager::pairHost(NvComputer* computer, QString pin, QString otpPassphrase)
 {
     // Punt to a worker thread to avoid stalling the
     // UI while waiting for pairing to complete
-    PendingPairingTask* pairing = new PendingPairingTask(this, computer, pin);
+    PendingPairingTask* pairing = new PendingPairingTask(this, computer, pin, otpPassphrase);
     QThreadPool::globalInstance()->start(pairing);
 }
 
