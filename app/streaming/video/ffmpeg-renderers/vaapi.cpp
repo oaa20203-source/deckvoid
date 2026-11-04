@@ -758,8 +758,8 @@ void VAAPIRenderer::notifyOverlayUpdated(Overlay::OverlayType type)
             overlayRect.x = 0;
             overlayRect.y = -newSurface->h;
         }
-        else if (type == Overlay::OverlayDebug) {
-            // Top left
+        else {
+            // Top left (debug). The quick menu is centered at render time.
             overlayRect.x = 0;
             overlayRect.y = 0;
         }
@@ -854,6 +854,10 @@ VAAPIRenderer::renderFrame(AVFrame* frame)
             }
             if (overlayRect.y < 0) {
                 overlayRect.y += windowHeight;
+            }
+            if (type == Overlay::OverlayQuickMenu) {
+                overlayRect.x = SDL_max(0, (windowWidth - overlayRect.w) / 2);
+                overlayRect.y = SDL_max(0, (windowHeight - overlayRect.h) / 2);
             }
 
             status = vaAssociateSubpicture(vaDeviceContext->display,

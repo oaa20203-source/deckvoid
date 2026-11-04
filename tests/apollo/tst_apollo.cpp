@@ -8,6 +8,7 @@
 #include "backend/apollo/apollolaunchoptions.h"
 #include "backend/apollo/apollootp.h"
 #include "backend/apollo/apolloclipboardsync.h"
+#include "backend/apollo/apolloquickmenu.h"
 #include "backend/nvapp.h"
 
 #include <QSettings>
@@ -403,6 +404,71 @@ private slots:
         QVERIFY(!sync.shouldPushOnFocusGain("x"));
         QVERIFY(!sync.shouldPullOnFocusLoss());
         QVERIFY(!sync.canPull());
+    }
+    void quickMenuFullPermissions()
+    {
+        const auto host = ApolloHostInfo::fromServerInfo(kPairedApollo); // list|view|launch|server_cmd
+        ApolloQuickMenu menu;
+        menu.build(true, host, true);
+        QStringList labels;
+        for (const auto& item : menu.items()) labels << item.label;
+        // Empty command name keeps index 2 but is not shown; no clipboard bits granted.
+        QCOMPARE(labels, QStringList({"Server command: Restart Steam", "Server command: Sleep monitor",
+                                      "Toggle stats", "Disconnect", "Quit app on PC"}));
+        QCOMPARE(menu.items()[1].commandIndex, 1);
+    }
+
+    void quickMenuClipboardItemsFollowBitsAndSetting()
+    {
+        ApolloHostInfo host;
+        host.detected = true; host.permissionsKnown = true;
+        host.permissions = ApolloPermissions::ClipboardRead | ApolloPermissions::View;
+        ApolloQuickMenu menu;
+        menu.build(true, host, true);
+        QStringList labels;
+        for (const auto& item : menu.items()) labels << item.label;
+        QCOMPARE(labels, QStringList({"Pull clipboard from PC", "Toggle stats", "Disconnect"})); // no launch: no quit
+        menu.build(true, host, false); // clipboard sync off: no clipboard items
+        QCOMPARE(menu.items().size(), 2);
+    }
+
+    void quickMenuStockHost()
+    {
+        ApolloQuickMenu menu;
+        menu.build(false, ApolloHostInfo{}, true);
+        QStringList labels;
+        for (const auto& item : menu.items()) labels << item.label;
+        QCOMPARE(labels, QStringList({"Toggle stats", "Disconnect", "Quit app on PC"}));
+    }
+
+    void quickMenuNavigationAndText()
+    {
+        ApolloQuickMenu menu;
+        menu.build(false, ApolloHostInfo{}, true);
+        menu.open();
+        QVERIFY(menu.isOpen());
+        QCOMPARE(menu.selected()->kind, ApolloQuickMenu::ToggleStats);
+        menu.moveUp(); // wraps
+        QCOMPARE(menu.selected()->kind, ApolloQuickMenu::QuitApp);
+        menu.moveDown();
+        menu.moveDown();
+        QCOMPARE(menu.selected()->kind, ApolloQuickMenu::Disconnect);
+        QVERIFY(menu.text().contains("> Disconnect\n"));
+        QVERIFY(menu.text().contains("   Toggle stats\n"));
+        menu.close();
+        QVERIFY(!menu.isOpen());
+    }
+
+    void quickMenuTextFitsOverlay()
+    {
+        ApolloHostInfo host;
+        host.detected = true; host.permissionsKnown = true;
+        host.permissions = ApolloPermissions::ServerCommand;
+        for (int i = 0; i < 100; i++) host.serverCommands << QString(80, QChar('a' + (i % 26)));
+        ApolloQuickMenu menu;
+        menu.build(true, host, true);
+        QVERIFY(menu.text().size() <= ApolloQuickMenu::kMaxText);
+        QVERIFY(menu.items()[0].label.size() <= 16 + ApolloQuickMenu::kMaxCommandName);
     }
 };
 

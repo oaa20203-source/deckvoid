@@ -453,6 +453,11 @@ void VDPAURenderer::notifyOverlayUpdated(Overlay::OverlayType type)
             overlayRect.x0 = 0;
             overlayRect.y0 = 0;
         }
+        else {
+            // Centered (quick menu)
+            overlayRect.x0 = m_DisplayWidth > (uint32_t)newSurface->w ? (m_DisplayWidth - newSurface->w) / 2 : 0;
+            overlayRect.y0 = m_DisplayHeight > (uint32_t)newSurface->h ? (m_DisplayHeight - newSurface->h) / 2 : 0;
+        }
 
         overlayRect.x1 = overlayRect.x0 + newSurface->w;
         overlayRect.y1 = overlayRect.y0 + newSurface->h;

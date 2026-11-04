@@ -398,6 +398,14 @@ void SdlInputHandler::handleControllerButtonEvent(SDL_ControllerButtonEvent* eve
         return;
     }
 
+    // Handle Select+L1+R1+A as the DeckVoid quick menu combo
+    if (state->buttons == (BACK_FLAG | LB_FLAG | RB_FLAG | A_FLAG)) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected quick menu gamepad combo");
+        Session::get()->openQuickMenu();
+        return;
+    }
+
     // Handle Select+L1+R1+Y (Triangle) as the frametime graph combo
     if (state->buttons == (BACK_FLAG | LB_FLAG | RB_FLAG | Y_FLAG)) {
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
@@ -1347,3 +1355,12 @@ void SdlInputHandler::steamControllerDisconnected(int linkId, int generation)
 }
 
 #endif
+
+void SdlInputHandler::releaseAllGamepads()
+{
+    for (int i = 0; i < MAX_GAMEPADS; i++) {
+        if (m_GamepadState[i].controller != nullptr) {
+            LiSendMultiControllerEvent(m_GamepadState[i].index, m_GamepadMask, 0, 0, 0, 0, 0, 0, 0);
+        }
+    }
+}

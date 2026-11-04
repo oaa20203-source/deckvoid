@@ -12,5 +12,6 @@ HEADERS += \
     $$PWD/../../app/backend/apollo/apollolaunchoptions.h \
     $$PWD/../../app/backend/apollo/apollootp.h \
     $$PWD/../../app/backend/apollo/apolloclipboardsync.h \
+    $$PWD/../../app/backend/apollo/apolloquickmenu.h \
     $$PWD/../../app/backend/applistparser.h \
     $$PWD/../../app/backend/nvapp.h

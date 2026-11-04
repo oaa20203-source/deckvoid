@@ -1506,7 +1506,7 @@ private:
         // Only quit the running app if our session terminated gracefully
         bool shouldQuit =
                 !m_Session->m_UnexpectedTermination &&
-                m_Session->m_Preferences->quitAppAfter;
+                (m_Session->m_Preferences->quitAppAfter || m_Session->m_QuitHostAppOnEnd);
 
         // Notify the UI
         if (shouldQuit) {
@@ -2430,6 +2430,11 @@ void Session::exec()
             continue;
         }
 #endif
+        // While the quick menu is open it owns the input; nothing reaches the host.
+        if (m_QuickMenu.isOpen() && handleQuickMenuInput(event)) {
+            continue;
+        }
+
         switch (event.type) {
         case SDL_QUIT:
             SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
@@ -2982,5 +2987,128 @@ void Session::handleClipboardResult(SDL_Event& event)
             SDL_SetClipboardText(pulled->toUtf8().constData());
         }
         delete pulled;
+    }
+}
+
+
+void Session::openQuickMenu()
+{
+    if (m_QuickMenu.isOpen()) {
+        return;
+    }
+    m_QuickMenu.build(m_Computer->isApollo(), m_Computer->apollo,
+                      m_Preferences->apolloClipboardSync != ApolloClipboardSync::Off);
+    m_QuickMenu.open();
+    // Nothing may stay pressed on the host while the menu has the input.
+    m_InputHandler->releaseAllGamepads();
+    m_InputHandler->raiseAllKeys();
+    refreshQuickMenuOverlay();
+    m_OverlayManager.setOverlayState(Overlay::OverlayQuickMenu, true);
+}
+
+void Session::closeQuickMenu()
+{
+    m_QuickMenu.close();
+    m_OverlayManager.setOverlayState(Overlay::OverlayQuickMenu, false);
+}
+
+void Session::refreshQuickMenuOverlay()
+{
+    m_OverlayManager.updateOverlayText(Overlay::OverlayQuickMenu, m_QuickMenu.text().constData());
+}
+
+bool Session::handleQuickMenuInput(SDL_Event& event)
+{
+    switch (event.type) {
+    case SDL_KEYDOWN:
+        switch (event.key.keysym.sym) {
+        case SDLK_UP: m_QuickMenu.moveUp(); refreshQuickMenuOverlay(); break;
+        case SDLK_DOWN: m_QuickMenu.moveDown(); refreshQuickMenuOverlay(); break;
+        case SDLK_RETURN:
+        case SDLK_KP_ENTER:
+        case SDLK_SPACE: activateQuickMenuItem(); break;
+        case SDLK_ESCAPE: closeQuickMenu(); break;
+        default: break;
+        }
+        return true;
+    case SDL_CONTROLLERBUTTONDOWN:
+        switch (event.cbutton.button) {
+        case SDL_CONTROLLER_BUTTON_DPAD_UP: m_QuickMenu.moveUp(); refreshQuickMenuOverlay(); break;
+        case SDL_CONTROLLER_BUTTON_DPAD_DOWN: m_QuickMenu.moveDown(); refreshQuickMenuOverlay(); break;
+        case SDL_CONTROLLER_BUTTON_A: activateQuickMenuItem(); break;
+        case SDL_CONTROLLER_BUTTON_B: closeQuickMenu(); break;
+        default: break;
+        }
+        // Keep the input handler's button state in sync without sending a press.
+        return true;
+    case SDL_KEYUP:
+        // Releases still go through so the host and local key state stay consistent.
+        return false;
+    case SDL_CONTROLLERBUTTONUP:
+        return false;
+    case SDL_TEXTINPUT:
+    case SDL_MOUSEBUTTONDOWN:
+    case SDL_MOUSEBUTTONUP:
+    case SDL_MOUSEMOTION:
+    case SDL_MOUSEWHEEL:
+    case SDL_CONTROLLERAXISMOTION:
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+    case SDL_CONTROLLERSENSORUPDATE:
+    case SDL_CONTROLLERTOUCHPADDOWN:
+    case SDL_CONTROLLERTOUCHPADUP:
+    case SDL_CONTROLLERTOUCHPADMOTION:
+#endif
+    case SDL_FINGERDOWN:
+    case SDL_FINGERMOTION:
+    case SDL_FINGERUP:
+        return true;
+    default:
+        return false;
+    }
+}
+
+void Session::activateQuickMenuItem()
+{
+    const auto* item = m_QuickMenu.selected();
+    if (item == nullptr) {
+        return;
+    }
+    const auto kind = item->kind;
+    const int commandIndex = item->commandIndex;
+    closeQuickMenu();
+
+    switch (kind) {
+    case ApolloQuickMenu::ServerCommand: {
+        const int rc = LiSendExecServerCmd((uint8_t)commandIndex);
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Server command %d sent: %d", commandIndex, rc);
+        break;
+    }
+    case ApolloQuickMenu::PushClipboard: {
+        char* localText = SDL_GetClipboardText();
+        const QString text = localText ? QString::fromUtf8(localText) : QString();
+        SDL_free(localText);
+        if (!text.isEmpty() && m_ClipboardSync.canPush()) {
+            startClipboardTransfer(true, text);
+        }
+        break;
+    }
+    case ApolloQuickMenu::PullClipboard:
+        if (m_ClipboardSync.canPull()) {
+            startClipboardTransfer(false, QString());
+        }
+        break;
+    case ApolloQuickMenu::ToggleStats:
+        m_OverlayManager.setOverlayState(Overlay::OverlayDebug, !m_OverlayManager.isStatsEnabled());
+        break;
+    case ApolloQuickMenu::QuitApp:
+        m_QuitHostAppOnEnd = true;
+        [[fallthrough]];
+    case ApolloQuickMenu::Disconnect: {
+        SDL_Event quit = {};
+        quit.type = SDL_QUIT;
+        quit.quit.timestamp = SDL_GetTicks();
+        SDL_PushEvent(&quit);
+        break;
+    }
     }
 }

@@ -126,6 +126,9 @@ public:
 
     void raiseAllKeys();
 
+    // Tell the host every attached gamepad is released (the quick menu takes the input).
+    void releaseAllGamepads();
+
     void notifyMouseLeave();
 
     void notifyFocusLost();
@@ -161,6 +164,7 @@ private:
         KeyComboQuitAndExit,
         KeyComboToggleKeyboardGrab,
         KeyComboToggleTimingGraph,
+        KeyComboQuickMenu,
         KeyComboMax
     };
 

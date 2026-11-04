@@ -122,6 +122,11 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
     m_SpecialKeyCombos[KeyComboTogglePointerRegionLock].scanCode = SDL_SCANCODE_L;
     m_SpecialKeyCombos[KeyComboTogglePointerRegionLock].enabled = true;
 
+    m_SpecialKeyCombos[KeyComboQuickMenu].keyCombo = KeyComboQuickMenu;
+    m_SpecialKeyCombos[KeyComboQuickMenu].keyCode = SDLK_o;
+    m_SpecialKeyCombos[KeyComboQuickMenu].scanCode = SDL_SCANCODE_O;
+    m_SpecialKeyCombos[KeyComboQuickMenu].enabled = true;
+
     m_SpecialKeyCombos[KeyComboQuitAndExit].keyCombo = KeyComboQuitAndExit;
     m_SpecialKeyCombos[KeyComboQuitAndExit].keyCode = SDLK_e;
     m_SpecialKeyCombos[KeyComboQuitAndExit].scanCode = SDL_SCANCODE_E;

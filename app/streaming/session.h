@@ -1,6 +1,7 @@
 #pragma once
 
 #include "backend/apollo/apolloclipboardsync.h"
+#include "backend/apollo/apolloquickmenu.h"
 
 #include <QSemaphore>
 #include <QQuickWindow>
@@ -198,6 +199,9 @@ private:
 
     void toggleFullscreen();
 
+    // DeckVoid in-stream quick menu (SDL main thread only)
+    void openQuickMenu();
+
     void notifyMouseEmulationMode(bool enabled);
 
     void updateOptimalWindowDisplayMode();
@@ -329,6 +333,13 @@ private:
     // Apollo clipboard sync. State is only touched on the SDL main thread while
     // streaming; network calls run on the thread pool (startClipboardTransfer).
     ApolloClipboardSync m_ClipboardSync;
+
+    ApolloQuickMenu m_QuickMenu;
+    bool m_QuitHostAppOnEnd = false; // "Quit app on PC" from the quick menu
+    void closeQuickMenu();
+    void refreshQuickMenuOverlay();
+    bool handleQuickMenuInput(SDL_Event& event);
+    void activateQuickMenuItem();
     void startClipboardTransfer(bool push, const QString& text);
     void handleClipboardResult(SDL_Event& event);
     bool m_ShouldExit;

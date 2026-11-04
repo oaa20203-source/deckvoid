@@ -2598,6 +2598,11 @@ bool PlVkRenderer::renderMappedImage(pl_renderer renderer, const pl_frame& sourc
                 overlayParts[i].dst.x0 = 0;
                 overlayParts[i].dst.y0 = 0;
             }
+            else {
+                // Centered (quick menu)
+                overlayParts[i].dst.x0 = SDL_max(0, (targetFrame.crop.x1 - overlayParts[i].src.x1) / 2);
+                overlayParts[i].dst.y0 = SDL_max(0, (targetFrame.crop.y1 - overlayParts[i].src.y1) / 2);
+            }
             overlayParts[i].dst.x1 = overlayParts[i].dst.x0 + overlayParts[i].src.x1;
             overlayParts[i].dst.y1 = overlayParts[i].dst.y0 + overlayParts[i].src.y1;
 

@@ -214,7 +214,9 @@ void EGLRenderer::renderOverlay(Overlay::OverlayType type, int viewportWidth, in
             overlayRect.x = 0;
             overlayRect.y = viewportHeight - newSurface->h;
         } else {
-            SDL_assert(false);
+            // Centered (quick menu)
+            overlayRect.x = SDL_max(0, (viewportWidth - newSurface->w) / 2);
+            overlayRect.y = SDL_max(0, (viewportHeight - newSurface->h) / 2);
         }
 
         overlayRect.w = newSurface->w;

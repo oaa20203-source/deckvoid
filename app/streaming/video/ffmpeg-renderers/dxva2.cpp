@@ -668,6 +668,12 @@ void DXVA2Renderer::notifyOverlayUpdated(Overlay::OverlayType type)
         renderRect.x = 0;
         renderRect.y = 0;
     }
+    else {
+        // Quick menu: top left (Windows renderers are not part of DeckVoid builds)
+        // Top left
+        renderRect.x = 0;
+        renderRect.y = 0;
+    }
 
     renderRect.w = newSurface->w;
     renderRect.h = newSurface->h;

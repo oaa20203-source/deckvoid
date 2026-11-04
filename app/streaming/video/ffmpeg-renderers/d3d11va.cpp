@@ -1719,6 +1719,12 @@ bool D3D11VARenderer::createOverlayVertexBuffer(Overlay::OverlayType type, int w
         renderRect.x = 0;
         renderRect.y = m_DisplayHeight - height;
     }
+    else {
+        // Quick menu: top left (Windows renderers are not part of DeckVoid builds)
+        // Top left
+        renderRect.x = 0;
+        renderRect.y = m_DisplayHeight - height;
+    }
 
     renderRect.w = width;
     renderRect.h = height;

@@ -17,6 +17,7 @@ namespace Overlay {
 enum OverlayType {
     OverlayDebug,
     OverlayStatusUpdate,
+    OverlayQuickMenu, // DeckVoid in-stream menu, centered
     OverlayMax
 };
 
