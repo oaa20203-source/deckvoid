@@ -9,9 +9,11 @@ on:
     # branch pushes entirely, so branches must be named too.
     branches:
       - '**'
-    # Publishing moves the latest-build tag; that push must not start another build.
+    # Publishing moves the latest-build tag, and a versioned release (v0.1.0)
+    # tags a commit main has already built; neither push should start a build.
     tags-ignore:
       - latest-build
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -82,6 +84,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history: the release notes list the commits since the previous build
+          fetch-depth: 0
       - uses: actions/download-artifact@v5
         with:
           name: DeckVoid-Flatpak-${{ needs.setup.outputs.ci_version }}
@@ -92,8 +98,25 @@ jobs:
           GH_REPO: ${{ github.repository }}
           CI_VERSION: ${{ needs.setup.outputs.ci_version }}
         run: |
+          set -euo pipefail
           cp "DeckVoid-$CI_VERSION-x86_64.flatpak" DeckVoid-x86_64.flatpak
-          notes="Steam Deck build $CI_VERSION from commit ${GITHUB_SHA}. Install instructions: https://github.com/${GH_REPO}#install-on-steam-deck"
+
+          # The commit the previous build was made from: where the latest-build tag points
+          previous=$(gh api "repos/$GH_REPO/git/ref/tags/latest-build" -q .object.sha 2>/dev/null || true)
+          if [[ -n "$previous" ]] && git cat-file -e "$previous^{commit}" 2>/dev/null && [[ "$previous" != "$GITHUB_SHA" ]]; then
+            changes=$(git log --no-merges --format='- %s (%h)' "$previous..$GITHUB_SHA")
+            heading="## Changes since build ${previous:0:7}"
+          else
+            changes=$(git log --no-merges --format='- %s (%h)' -n 20 "$GITHUB_SHA")
+            heading="## Latest changes"
+          fi
+          [[ -n "$changes" ]] || changes="- (no new commits)"
+          notes=$(printf '%s\n\n%s\n\n%s\n%s\n' \
+            "Steam Deck build $CI_VERSION from commit ${GITHUB_SHA}. !ink installs this build itself through its in-app updater; to install by hand see https://github.com/${GH_REPO}#install-on-steam-deck" \
+            "$heading" \
+            "$changes" \
+            "Full history: https://github.com/${GH_REPO}/commits/${GITHUB_SHA}")
+
           if gh release view latest-build >/dev/null 2>&1; then
             # Move the tag to this commit so the release matches the file
             gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest-build" -f sha="$GITHUB_SHA" -F force=true
