@@ -5,6 +5,9 @@ permissions:
 
 on:
   push:
+    # Publishing moves the latest-build tag; that push must not start another build.
+    tags-ignore:
+      - latest-build
   pull_request:
     branches:
       - main
