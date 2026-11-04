@@ -623,20 +623,20 @@ NvHTTP::openConnectionToString(QUrl baseUrl,
 }
 
 QString
-NvHTTP::getClipboard()
+NvHTTP::getClipboard(int timeoutMs)
 {
     QNetworkReply* reply = openConnection(m_BaseUrlHttps, "actions/clipboard", "type=text",
-                                          REQUEST_TIMEOUT_MS, NvLogLevel::NVLL_ERROR);
+                                          timeoutMs, NvLogLevel::NVLL_ERROR);
     QString text = QString::fromUtf8(reply->readAll());
     delete reply;
     return text;
 }
 
 void
-NvHTTP::setClipboard(const QString& text)
+NvHTTP::setClipboard(const QString& text, int timeoutMs)
 {
     QNetworkReply* reply = openConnection(m_BaseUrlHttps, "actions/clipboard", "type=text",
-                                          REQUEST_TIMEOUT_MS, NvLogLevel::NVLL_ERROR, {}, false,
+                                          timeoutMs, NvLogLevel::NVLL_ERROR, {}, false,
                                           QNetworkAccessManager::PostOperation, QSslCertificate(),
                                           text.toUtf8(), QStringLiteral("text/plain; charset=utf-8"));
     delete reply;

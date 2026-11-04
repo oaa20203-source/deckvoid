@@ -1525,7 +1525,7 @@ private:
         if (m_Session->m_ClipboardSync.shouldPullOnDisconnect()) {
             try {
                 NvHTTP http(m_Session->m_Computer);
-                const QString hostText = http.getClipboard();
+                const QString hostText = http.getClipboard(NvHTTP::CLIPBOARD_DISCONNECT_TIMEOUT_MS);
                 // SDL video is shut down by now and the Qt loop runs again: use QClipboard.
                 QMetaObject::invokeMethod(QCoreApplication::instance(), [hostText]() {
                     QClipboard* clipboard = QGuiApplication::clipboard();

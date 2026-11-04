@@ -200,8 +200,13 @@ public:
     // Apollo clipboard (HTTPS, needs an active stream from this client and the
     // clipboard_read / clipboard_set permission). Throws GfeHttpResponseException
     // with the HTTP status: 401 permission, 403 no active stream.
-    QString getClipboard();
-    void setClipboard(const QString& text);
+    // Clipboard calls are short so they never hold up the session: a few seconds in
+    // the stream (they run on a pool thread), one second during disconnect, where the
+    // host may already be tearing the session down and not answer at all.
+    static const int CLIPBOARD_TIMEOUT_MS = 3000;
+    static const int CLIPBOARD_DISCONNECT_TIMEOUT_MS = 1000;
+    QString getClipboard(int timeoutMs = CLIPBOARD_TIMEOUT_MS);
+    void setClipboard(const QString& text, int timeoutMs = CLIPBOARD_TIMEOUT_MS);
 
     QImage
     getBoxArt(int appId);
