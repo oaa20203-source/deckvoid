@@ -216,8 +216,10 @@ import AppModel 1.0; AppModel {}', parent, '')
             }
         }
 
-        function launchOrResumeSelectedApp(quitExistingApp)
+        // displayOverride: -2 use the preference, -1 host decides, 0 physical, 1 virtual (Apollo hosts)
+        function launchOrResumeSelectedApp(quitExistingApp, displayOverride)
         {
+            if (displayOverride === undefined) displayOverride = -2
             if (model.sleepAction) {
                 if (!appGrid.sleepPending) sleepDialog.open()
                 return
@@ -235,6 +237,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                     quitAppDialog.segueToStream = true
                     quitAppDialog.nextAppName = model.name
                     quitAppDialog.nextAppIndex = index
+                    quitAppDialog.nextDisplayOverride = displayOverride
                     quitAppDialog.open()
                 }
 
@@ -244,7 +247,7 @@ import AppModel 1.0; AppModel {}', parent, '')
             var component = Qt.createComponent("StreamSegue.qml")
             var segue = component.createObject(stackView, {
                                                    "appName": model.name,
-                                                   "session": appModel.createSessionForApp(index),
+                                                   "session": appModel.createSessionForApp(index, displayOverride),
                                                    "isResume": verb === 1
                                                })
             stackView.push(segue)
@@ -312,6 +315,16 @@ import AppModel 1.0; AppModel {}', parent, '')
             } else appContextMenu.open()
         }
 
+        function launchOnDisplay(virtualDisplay) {
+            if (virtualDisplay === 1 && !appModel.apolloVirtualDisplayReady()) {
+                vdNotReadyDialog.appIndex = index
+                vdNotReadyDialog.launch = function() { launchOrResumeSelectedApp(true, 1) }
+                vdNotReadyDialog.open()
+                return
+            }
+            launchOrResumeSelectedApp(true, virtualDisplay)
+        }
+
         function doQuitGame() {
             quitAppDialog.appName = appModel.getRunningAppName()
             quitAppDialog.segueToStream = false
@@ -328,6 +341,20 @@ import AppModel 1.0; AppModel {}', parent, '')
                 NavigableMenuItem {
                     text: model.running ? qsTr("Resume Game") : qsTr("Launch Game")
                     onTriggered: launchOrResumeSelectedApp(true)
+                }
+                NavigableMenuItem {
+                    text: qsTr("Launch on Virtual Display")
+                    onTriggered: launchOnDisplay(1)
+                    visible: !model.running && !model.notice &&
+                             (appModel.apolloDisplayMenu() === 1 || appModel.apolloDisplayMenu() === 2)
+                    height: visible ? implicitHeight : 0
+                }
+                NavigableMenuItem {
+                    text: qsTr("Launch on Physical Display")
+                    onTriggered: launchOnDisplay(0)
+                    visible: !model.running && !model.notice &&
+                             (appModel.apolloDisplayMenu() === 1 || appModel.apolloDisplayMenu() === 3)
+                    height: visible ? implicitHeight : 0
                 }
                 NavigableMenuItem {
                     text: qsTr("Quit Game")
@@ -381,6 +408,7 @@ import AppModel 1.0; AppModel {}', parent, '')
         property bool segueToStream : false
         property string nextAppName: ""
         property int nextAppIndex: 0
+        property int nextDisplayOverride: -2
         text:qsTr("Are you sure you want to quit %1? Any unsaved progress will be lost.").arg(appName)
         standardButtons: Dialog.Yes | Dialog.No
 
@@ -391,7 +419,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                 // Store the session and app name if we're going to stream after
                 // successfully quitting the old app.
                 params.nextAppName = nextAppName
-                params.nextSession = appModel.createSessionForApp(nextAppIndex)
+                params.nextSession = appModel.createSessionForApp(nextAppIndex, nextDisplayOverride)
             }
             else {
                 params.nextAppName = null
@@ -416,6 +444,16 @@ import AppModel 1.0; AppModel {}', parent, '')
                 appModel.requestHostSleep()
             }
         }
+    }
+
+    NavigableMessageDialog {
+        id: vdNotReadyDialog
+        property int appIndex: -1
+        property var launch: null
+        title: qsTr("Virtual display not ready")
+        text: qsTr("The host reports that its virtual display driver is not ready. The launch may fall back to the physical display or fail. Launch anyway?")
+        standardButtons: Dialog.Yes | Dialog.No
+        onAccepted: if (launch) launch()
     }
 
     NavigableMessageDialog {

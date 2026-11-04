@@ -37,7 +37,11 @@ public:
     // Must be called before any QAbstractListModel functions
     Q_INVOKABLE void initialize(ComputerManager* computerManager, int computerIndex, bool showHiddenGames);
 
-    Q_INVOKABLE Session* createSessionForApp(int appIndex);
+    Q_INVOKABLE Session* createSessionForApp(int appIndex, int apolloVirtualDisplay = -2);
+
+    // Apollo display choices for the app menu: 0 hide, 1 both, 2 only "virtual", 3 only "physical"
+    Q_INVOKABLE int apolloDisplayMenu();
+    Q_INVOKABLE bool apolloVirtualDisplayReady();
 
     Q_INVOKABLE int getDirectLaunchAppIndex();
 

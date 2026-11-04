@@ -187,6 +187,10 @@ public:
     Q_PROPERTY(bool multiController MEMBER multiController NOTIFY multiControllerChanged)
     Q_PROPERTY(bool enableMdns MEMBER enableMdns NOTIFY enableMdnsChanged)
     Q_PROPERTY(bool quitAppAfter MEMBER quitAppAfter NOTIFY quitAppAfterChanged)
+    // Apollo-family hosts
+    Q_PROPERTY(QString apolloClientName MEMBER apolloClientName NOTIFY apolloSettingsChanged)
+    Q_PROPERTY(int apolloVirtualDisplay MEMBER apolloVirtualDisplay NOTIFY apolloSettingsChanged)
+    Q_PROPERTY(int apolloScaleFactor MEMBER apolloScaleFactor NOTIFY apolloSettingsChanged)
     Q_PROPERTY(bool absoluteMouseMode MEMBER absoluteMouseMode NOTIFY absoluteMouseModeChanged)
     Q_PROPERTY(bool absoluteTouchMode MEMBER absoluteTouchMode NOTIFY absoluteTouchModeChanged)
     Q_PROPERTY(bool framePacing MEMBER framePacing NOTIFY framePacingChanged)
@@ -258,6 +262,9 @@ public:
     bool multiController;
     bool enableMdns;
     bool quitAppAfter;
+    QString apolloClientName;  // sent as devicename/clientName; defaults to the machine's host name
+    int apolloVirtualDisplay;  // -1 host decides, 0 physical display, 1 virtual display
+    int apolloScaleFactor;     // percent, 20..200; 100 = native
     bool absoluteMouseMode;
     bool absoluteTouchMode;
     bool framePacing;
@@ -323,6 +330,7 @@ signals:
     void unsupportedFpsChanged();
     void enableMdnsChanged();
     void quitAppAfterChanged();
+    void apolloSettingsChanged();
     void absoluteMouseModeChanged();
     void absoluteTouchModeChanged();
     void audioConfigChanged();

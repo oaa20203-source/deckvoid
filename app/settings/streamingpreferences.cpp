@@ -5,6 +5,7 @@
 #include "diagnostics/diagnosticcapture.h"
 
 #include <QSettings>
+#include <QSysInfo>
 #include <QTranslator>
 #include <QCoreApplication>
 #include <QLocale>
@@ -48,6 +49,9 @@
 #define SER_WINDOWMODE "windowmode"
 #define SER_MDNS "mdns"
 #define SER_QUITAPPAFTER "quitAppAfter"
+#define SER_APOLLOCLIENTNAME "apolloClientName"
+#define SER_APOLLOVIRTUALDISPLAY "apolloVirtualDisplay"
+#define SER_APOLLOSCALEFACTOR "apolloScaleFactor"
 #define SER_ABSMOUSEMODE "mouseacceleration"
 #define SER_ABSTOUCHMODE "abstouchmode"
 #define SER_STARTWINDOWED "startwindowed"
@@ -229,6 +233,9 @@ void StreamingPreferences::reload()
     multiController = settings.value(SER_MULTICONT, true).toBool();
     enableMdns = settings.value(SER_MDNS, true).toBool();
     quitAppAfter = settings.value(SER_QUITAPPAFTER, false).toBool();
+    apolloClientName = settings.value(SER_APOLLOCLIENTNAME, QSysInfo::machineHostName()).toString();
+    apolloVirtualDisplay = qBound(-1, settings.value(SER_APOLLOVIRTUALDISPLAY, -1).toInt(), 1);
+    apolloScaleFactor = qBound(20, settings.value(SER_APOLLOSCALEFACTOR, 100).toInt(), 200);
     absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, false).toBool();
     absoluteTouchMode = settings.value(SER_ABSTOUCHMODE, true).toBool();
     framePacing = settings.value(SER_FRAMEPACING, false).toBool();
@@ -461,6 +468,9 @@ void StreamingPreferences::save()
     settings.setValue(SER_MULTICONT, multiController);
     settings.setValue(SER_MDNS, enableMdns);
     settings.setValue(SER_QUITAPPAFTER, quitAppAfter);
+    settings.setValue(SER_APOLLOCLIENTNAME, apolloClientName);
+    settings.setValue(SER_APOLLOVIRTUALDISPLAY, apolloVirtualDisplay);
+    settings.setValue(SER_APOLLOSCALEFACTOR, apolloScaleFactor);
     settings.setValue(SER_ABSMOUSEMODE, absoluteMouseMode);
     settings.setValue(SER_ABSTOUCHMODE, absoluteTouchMode);
     settings.setValue(SER_FRAMEPACING, framePacing);

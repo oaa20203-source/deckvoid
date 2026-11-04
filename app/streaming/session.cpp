@@ -5,6 +5,7 @@
 #include <QDir>
 #include "session.h"
 #include "backend/apollo/apollolaunchverb.h"
+#include "backend/apollo/apollolaunchoptions.h"
 #include "settings/streamingpreferences.h"
 #include "streaming/streamutils.h"
 #ifdef Q_OS_DARWIN
@@ -1846,21 +1847,58 @@ bool Session::startConnectionAsync()
     QString rtspSessionUrl;
     LaunchWarning::Code launchWarning = LaunchWarning::Code::None;
 
+    ApolloLaunchOptions apolloOptions;
+    apolloOptions.apolloHost = m_Computer->isApollo();
+    apolloOptions.appUuid = m_App.uuid;
+    apolloOptions.virtualDisplay = m_ApolloVirtualDisplay != -2 ? m_ApolloVirtualDisplay
+                                                                : m_Preferences->apolloVirtualDisplay;
+    apolloOptions.scaleFactor = m_Preferences->apolloScaleFactor;
+    apolloOptions.clientName = m_Preferences->apolloClientName;
+
+    bool resume = launchVerb == ApolloLaunchVerb::Verb::Resume;
     try {
         NvHTTP http(m_Computer);
-        http.startApp(launchVerb == ApolloLaunchVerb::Verb::Resume ? "resume" : "launch",
-                      m_Computer->isNvidiaServerSoftware,
-                      m_App.id, &m_StreamConfig,
-                      enableGameOptimizations,
-                      m_Preferences->playAudioOnHost,
-                      m_InputHandler->getAttachedGamepadMask(),
-                      m_InputHandler->getAttachedPlayStationGamepadMask(),
-                      !m_Preferences->multiController,
-                      m_PresentationSettings.enableVrr,
-                      rtspSessionUrl,
-                      launchWarning);
+        for (;;) {
+            try {
+                http.startApp(resume ? "resume" : "launch",
+                              m_Computer->isNvidiaServerSoftware,
+                              m_App.id, &m_StreamConfig,
+                              enableGameOptimizations,
+                              m_Preferences->playAudioOnHost,
+                              m_InputHandler->getAttachedGamepadMask(),
+                              m_InputHandler->getAttachedPlayStationGamepadMask(),
+                              !m_Preferences->multiController,
+                              m_PresentationSettings.enableVrr,
+                              apolloOptions,
+                              rtspSessionUrl,
+                              launchWarning);
+                break;
+            } catch (const GfeHttpResponseException& e) {
+                if (!apolloOptions.apolloHost) {
+                    throw;
+                }
+                switch (ApolloLaunchReply::classify(e.getStatusCode(), resume)) {
+                case ApolloLaunchReply::Kind::Notice:
+                    // e.g. "launch again to confirm closing the running app", or a
+                    // control tile that finished its action. Not a failure.
+                    emit displayLaunchNotice(QString::fromUtf8(e.getStatusMessage()));
+                    return false;
+                case ApolloLaunchReply::Kind::RetryAsLaunch:
+                    // The app exited after our last poll; start it fresh, once.
+                    resume = false;
+                    continue;
+                case ApolloLaunchReply::Kind::Error:
+                    throw;
+                }
+            }
+        }
     } catch (const GfeHttpResponseException& e) {
-        emit displayLaunchError(tr("Host returned error: %1").arg(e.toQString()));
+        // Apollo hosts put a complete, user-facing explanation in status_message
+        // (for 403 it names the permission to enable in the host's web UI).
+        const QString hostMessage = QString::fromUtf8(e.getStatusMessage());
+        emit displayLaunchError(m_Computer->isApollo() && !hostMessage.isEmpty()
+                                    ? hostMessage
+                                    : tr("Host returned error: %1").arg(e.toQString()));
         return false;
     } catch (const QtNetworkReplyException& e) {
         emit displayLaunchError(e.toQString());

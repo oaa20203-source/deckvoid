@@ -111,6 +111,10 @@ public:
     virtual ~Session();
 
     Q_INVOKABLE bool initialize(QQuickWindow* qtWindow);
+
+    // Per-launch display choice for Apollo hosts: -1 host decides, 0 physical,
+    // 1 virtual. Unset (-2) uses the apolloVirtualDisplay preference.
+    void setApolloVirtualDisplay(int value) { m_ApolloVirtualDisplay = value; }
     Q_INVOKABLE void start();
     Q_INVOKABLE void interrupt();
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
@@ -146,6 +150,9 @@ public:
     void setShouldExit(bool quitHostApp = false);
 
 signals:
+    // A host message that is not a failure (Apollo status 410): no stream starts.
+    void displayLaunchNotice(QString text);
+
     void stageStarting(QString stage);
 
     void stageFailed(QString stage, int errorCode, QString failingPorts);
@@ -315,6 +322,7 @@ private:
     int m_FlushingWindowEventsRef;
     QStringList m_LaunchWarnings;
     QString m_HostLaunchWarning;
+    int m_ApolloVirtualDisplay = -2;
     bool m_ShouldExit;
 
     bool m_AsyncConnectionSuccess;

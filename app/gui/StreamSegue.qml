@@ -42,6 +42,15 @@ Item {
         window.visible = false
     }
 
+    function displayLaunchNotice(text)
+    {
+        // Apollo host message that is not a failure (status 410), e.g. a request
+        // to launch again to confirm closing the running app.
+        streamSegueErrorDialog.title = qsTr("Message from host")
+        streamSegueErrorDialog.imageSrc = "qrc:/res/baseline-warning-24px.svg"
+        streamSegueErrorDialog.text = text
+    }
+
     function displayLaunchError(text)
     {
         // Display the error dialog after Session::exec() returns
@@ -117,6 +126,7 @@ Item {
         session.stageFailed.connect(stageFailed)
         session.connectionStarted.connect(connectionStarted)
         session.displayLaunchError.connect(displayLaunchError)
+        session.displayLaunchNotice.connect(displayLaunchNotice)
         session.quitStarting.connect(quitStarting)
         session.sessionFinished.connect(sessionFinished)
         session.readyForDeletion.connect(sessionReadyForDeletion)

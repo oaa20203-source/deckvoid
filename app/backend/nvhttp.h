@@ -2,6 +2,7 @@
 
 #include "identitymanager.h"
 #include "nvapp.h"
+#include "apollo/apollolaunchoptions.h"
 #include "nvaddress.h"
 #include "launchwarning.h"
 #include "streaming/video/pyrowave/pyrowavelinkpolicy.h"
@@ -189,6 +190,7 @@ public:
              int playStationGamepadMask,
              bool persistGameControllersOnDisconnect,
              bool clientVrrRequested,
+             const ApolloLaunchOptions& apollo,
              QString& rtspSessionUrl,
              LaunchWarning::Code& launchWarning);
 

@@ -352,6 +352,7 @@ NvHTTP::startApp(QString verb,
                  int playStationGamepadMask,
                  bool persistGameControllersOnDisconnect,
                  bool clientVrrRequested,
+                 const ApolloLaunchOptions& apollo,
                  QString& rtspSessionUrl,
                  LaunchWarning::Code& launchWarning)
 {
@@ -389,6 +390,7 @@ NvHTTP::startApp(QString verb,
                                    // (Vibeshine: 1000 Hz virtual display in its Automatic mode).
                                    // Other hosts ignore unknown launch parameters.
                                    (clientVrrRequested ? "&clientVrrRequested=1" : "")+
+                                   apollo.queryString()+
                                    LiGetLaunchUrlQueryParameters(),
                                    LAUNCH_TIMEOUT_MS);
 

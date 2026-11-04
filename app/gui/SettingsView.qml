@@ -2108,6 +2108,114 @@ Flickable {
         }
 
         GroupBox {
+            id: apolloSettingsGroupBox
+            width: (parent.width - (parent.leftPadding + parent.rightPadding))
+            padding: 12
+            title: "<font color=\"skyblue\">" + qsTr("Apollo Host") + "</font>"
+            font.pointSize: 12
+
+            Column {
+                anchors.fill: parent
+                spacing: 5
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Used with Apollo and Vibepollo hosts. Other hosts ignore these settings.")
+                    font.pointSize: 10
+                    wrapMode: Text.Wrap
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Client name")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                TextField {
+                    id: apolloClientNameField
+                    width: Math.min(parent.width, 400)
+                    font.pointSize: 12
+                    maximumLength: 64
+                    text: StreamingPreferences.apolloClientName
+                    onEditingFinished: StreamingPreferences.apolloClientName = text.trim()
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("How this device appears in the host's device list. Sent when pairing and launching.")
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Display for launches")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                AutoResizingComboBox {
+                    id: apolloDisplayComboBox
+                    textRole: "text"
+                    model: ListModel {
+                        ListElement { text: qsTr("Host decides"); val: -1 }
+                        ListElement { text: qsTr("Virtual display"); val: 1 }
+                        ListElement { text: qsTr("Physical display"); val: 0 }
+                    }
+                    Component.onCompleted: {
+                        for (var i = 0; i < model.count; i++) {
+                            if (model.get(i).val === StreamingPreferences.apolloVirtualDisplay) {
+                                currentIndex = i
+                                break
+                            }
+                        }
+                    }
+                    onActivated: StreamingPreferences.apolloVirtualDisplay = model.get(currentIndex).val
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 6000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Host decides leaves the choice to the host's per-app and per-client settings. Virtual or Physical overrides them for every launch from this device.")
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Virtual display scale")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                AutoResizingComboBox {
+                    id: apolloScaleComboBox
+                    textRole: "text"
+                    model: ListModel {
+                        ListElement { text: "50%"; val: 50 }
+                        ListElement { text: "75%"; val: 75 }
+                        ListElement { text: qsTr("100% (native)"); val: 100 }
+                        ListElement { text: "125%"; val: 125 }
+                        ListElement { text: "150%"; val: 150 }
+                        ListElement { text: "175%"; val: 175 }
+                        ListElement { text: "200%"; val: 200 }
+                    }
+                    Component.onCompleted: {
+                        currentIndex = 2
+                        for (var i = 0; i < model.count; i++) {
+                            if (model.get(i).val === StreamingPreferences.apolloScaleFactor) {
+                                currentIndex = i
+                                break
+                            }
+                        }
+                    }
+                    onActivated: StreamingPreferences.apolloScaleFactor = model.get(currentIndex).val
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 6000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Renders the host's virtual display larger or smaller than the stream. Above 100% the desktop looks sharper and smaller on the Deck; the stream resolution does not change.")
+                }
+            }
+        }
+
+        GroupBox {
             id: uiSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12

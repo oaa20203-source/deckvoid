@@ -1,5 +1,6 @@
 #include "appmodel.h"
 #include "backend/apollo/apollolaunchverb.h"
+#include "settings/streamingpreferences.h"
 
 AppModel::AppModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -79,13 +80,34 @@ QString AppModel::getRunningAppName()
     return nullptr;
 }
 
-Session* AppModel::createSessionForApp(int appIndex)
+Session* AppModel::createSessionForApp(int appIndex, int apolloVirtualDisplay)
 {
     // The synthetic power row must never construct a streaming Session.
     if (appIndex < 0 || appIndex >= m_VisibleApps.count()) return nullptr;
     NvApp app = m_VisibleApps.at(appIndex);
 
-    return new Session(m_Computer, app);
+    auto session = new Session(m_Computer, app);
+    if (apolloVirtualDisplay != -2) {
+        session->setApolloVirtualDisplay(apolloVirtualDisplay);
+    }
+    return session;
+}
+
+int AppModel::apolloDisplayMenu()
+{
+    if (!m_Computer->isApollo() || !m_Computer->apollo.virtualDisplayCapable) {
+        return 0;
+    }
+    switch (StreamingPreferences::get()->apolloVirtualDisplay) {
+    case 0: return 2;  // default is physical: offer virtual
+    case 1: return 3;  // default is virtual: offer physical
+    default: return 1; // host decides: offer both
+    }
+}
+
+bool AppModel::apolloVirtualDisplayReady()
+{
+    return m_Computer->apollo.virtualDisplayDriverReady;
 }
 
 int AppModel::getDirectLaunchAppIndex()

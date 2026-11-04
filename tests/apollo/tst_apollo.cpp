@@ -5,6 +5,7 @@
 #include "backend/apollo/apollopermissions.h"
 #include "backend/applistparser.h"
 #include "backend/apollo/apollolaunchverb.h"
+#include "backend/apollo/apollolaunchoptions.h"
 #include "backend/nvapp.h"
 
 #include <QSettings>
@@ -277,6 +278,57 @@ private slots:
         NvApp loaded(settings);
         QCOMPARE(loaded.hostIndex, qint64(-1));
         QVERIFY(loaded.uuid.isEmpty());
+    }
+    void launchQueryForStockHostIsEmpty()
+    {
+        ApolloLaunchOptions options;
+        options.apolloHost = false;
+        options.appUuid = "U"; options.virtualDisplay = 1; options.scaleFactor = 150; options.clientName = "Deck";
+        QVERIFY(options.queryString().isEmpty());
+    }
+
+    void launchQueryHostDecides()
+    {
+        ApolloLaunchOptions options;
+        options.apolloHost = true;
+        options.appUuid = "11111111-0000-4000-8000-000000000001";
+        options.clientName = "Omar's Deck";
+        // virtualDisplay -1 (host decides) and scale 100 are host defaults: not sent.
+        QCOMPARE(options.queryString(),
+                 QString("&appuuid=11111111-0000-4000-8000-000000000001&clientName=Omar%27s%20Deck"));
+    }
+
+    void launchQueryExplicitDisplayAndScale()
+    {
+        ApolloLaunchOptions options;
+        options.apolloHost = true;
+        options.virtualDisplay = 0;
+        options.scaleFactor = 150;
+        QCOMPARE(options.queryString(), QString("&virtualDisplay=0&scaleFactor=150"));
+        options.virtualDisplay = 1;
+        options.scaleFactor = 500; // clamped to the host's 20..200
+        QCOMPARE(options.queryString(), QString("&virtualDisplay=1&scaleFactor=200"));
+        options.scaleFactor = 5;
+        QCOMPARE(options.queryString(), QString("&virtualDisplay=1&scaleFactor=20"));
+    }
+
+    void launchQueryNeverSendsReservedClientName()
+    {
+        // The host refuses clients named "self" (src/nvhttp.cpp:2906-2909).
+        ApolloLaunchOptions options;
+        options.apolloHost = true;
+        options.clientName = "  Self ";
+        QVERIFY(!options.queryString().contains("clientName"));
+    }
+
+    void launchReplyClassification()
+    {
+        using R = ApolloLaunchReply::Kind;
+        QCOMPARE(ApolloLaunchReply::classify(410, false), R::Notice);       // confirm replacement, terminated...
+        QCOMPARE(ApolloLaunchReply::classify(403, false), R::Error);
+        QCOMPARE(ApolloLaunchReply::classify(503, true), R::RetryAsLaunch);  // /resume: app already exited
+        QCOMPARE(ApolloLaunchReply::classify(503, false), R::Error);
+        QCOMPARE(ApolloLaunchReply::classify(500, true), R::Error);
     }
 };
 
