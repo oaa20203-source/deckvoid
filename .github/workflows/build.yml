@@ -5,6 +5,10 @@ permissions:
 
 on:
   push:
+    # Build every branch push. Listing only tags-ignore would make GitHub skip
+    # branch pushes entirely, so branches must be named too.
+    branches:
+      - '**'
     # Publishing moves the latest-build tag; that push must not start another build.
     tags-ignore:
       - latest-build
