@@ -1,3 +1,6 @@
+#ifdef __APPLE__
+#include "macrawmouse.h"
+#endif
 #include "input.h"
 
 #include <Limelight.h>
@@ -78,6 +81,13 @@ void SdlInputHandler::handleMouseMotionEvent(SDL_MouseMotionEvent* event)
         // Ignore synthetic mouse events
         return;
     }
+#ifdef __APPLE__
+    else if (!m_AbsoluteMouseMode && MacRawMouse::isForwarding()) {
+        // GCMouse already sent this movement straight from its own queue
+        SDL_FlushEvent(SDL_MOUSEMOTION);
+        return;
+    }
+#endif
 
     // Batch all pending mouse motion events to save CPU time
     Sint32 x = event->x, y = event->y, xrel = event->xrel, yrel = event->yrel;

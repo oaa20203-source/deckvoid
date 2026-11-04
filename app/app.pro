@@ -167,7 +167,7 @@ macx {
         CONFIG += discord-rpc libplacebo
     }
 
-    LIBS += -lobjc -framework VideoToolbox -framework AVFoundation -framework CoreVideo -framework CoreGraphics -framework CoreMedia -framework AppKit -framework Metal -framework QuartzCore
+    LIBS += -lobjc -framework VideoToolbox -framework AVFoundation -framework CoreVideo -framework CoreGraphics -framework CoreMedia -framework AppKit -framework Metal -framework QuartzCore -framework GameController
     CONFIG += ffmpeg
 }
 
@@ -522,7 +522,8 @@ macx {
         streaming/video/ffmpeg-renderers/vt_base.mm \
         streaming/video/ffmpeg-renderers/vt_avsamplelayer.mm \
         streaming/video/ffmpeg-renderers/vt_metal.mm \
-        streaming/video/ffmpeg-renderers/macdisplaytiming.mm
+        streaming/video/ffmpeg-renderers/macdisplaytiming.mm \
+        streaming/input/macrawmouse.mm
 
     HEADERS += \
         streaming/video/ffmpeg-renderers/vt.h \

@@ -1,3 +1,6 @@
+#ifdef __APPLE__
+#include "macrawmouse.h"
+#endif
 #include <Limelight.h>
 #include "SDL_compat.h"
 #include "streaming/session.h"
@@ -269,6 +272,9 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
 
 SdlInputHandler::~SdlInputHandler()
 {
+#ifdef __APPLE__
+    MacRawMouse::stop();
+#endif
 #if HAVE_STEAM_CONTROLLER_DRIVER
     // Nothing more goes to the host from the driver threads, then the stop sequence (motors
     // off, lizard mode back on) runs before the devices close. This precedes LiStopConnection().
@@ -480,6 +486,12 @@ void SdlInputHandler::setCaptureActive(bool active)
             SDL_ShowCursor(m_MouseCursorCapturedVisibilityState);
             m_FakeMouseCaptureActive = true;
         }
+#ifdef __APPLE__
+        else {
+            // Relative capture is active: take raw motion from GCMouse
+            MacRawMouse::start();
+        }
+#endif
 
         // Synchronize the client and host cursor when activating absolute capture
         if (m_AbsoluteMouseMode) {
@@ -508,6 +520,9 @@ void SdlInputHandler::setCaptureActive(bool active)
         }
     }
     else {
+#ifdef __APPLE__
+        MacRawMouse::stop();
+#endif
         if (m_FakeMouseCaptureActive) {
             // Display the cursor again
             SDL_ShowCursor(SDL_ENABLE);
