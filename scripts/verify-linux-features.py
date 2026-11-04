@@ -10,7 +10,7 @@ parser.add_argument('--qt-plugins', type=Path)
 parser.add_argument('--host-wayland', action='store_true')
 args = parser.parse_args()
 root = args.root
-binary = root / 'usr/bin/moonlight' if (root / 'usr/bin/moonlight').exists() else root / 'bin/moonlight'
+binary = root / 'usr/bin/deckvoid' if (root / 'usr/bin/deckvoid').exists() else root / 'bin/deckvoid'
 payload = binary.read_bytes()
 assert b'Wayland presentation feedback enabled for adaptive buffering' in payload, 'Native feedback missing'
 assert b'GPU performance hold: unavailable in this build' not in payload, 'AMDGPU capability compiled out'
