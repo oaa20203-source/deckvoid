@@ -1,3 +1,4 @@
+#include "streaming/bitrateadapter.h"
 #include <Limelight.h>
 #include "ffmpeg.h"
 #include "performancestats.h"
@@ -3098,6 +3099,7 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
     else {
         // Any frame number greater than m_LastFrameNumber + 1 represents a dropped frame
         m_ActiveWndVideoStats.networkDroppedFrames += du->frameNumber - (m_LastFrameNumber + 1);
+        BitrateAdapter::noteFramesDropped(du->frameNumber - (m_LastFrameNumber + 1));
         m_ActiveWndVideoStats.totalFrames += du->frameNumber - (m_LastFrameNumber + 1);
         m_LastFrameNumber = du->frameNumber;
     }
@@ -3179,6 +3181,7 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
     m_ActiveWndVideoStats.totalHostProcessingLatency += du->frameHostProcessingLatency;
 
     m_ActiveWndVideoStats.receivedFrames++;
+    BitrateAdapter::noteFrameReceived();
     m_ActiveWndVideoStats.totalFrames++;
 
     // Every frame decodes independently, so unopened frames can safely be

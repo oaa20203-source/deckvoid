@@ -38,4 +38,10 @@ private:
     // Catch-up drops are spread out (at most every other chunk) so a burst of
     // late packets costs a few short gaps instead of a run of missing audio.
     bool m_DroppedLastChunk = false;
+
+    // Adaptive speaker buffer, for the lowest latency the link allows: keep
+    // 20 ms queued for the speaker, grow by 10 ms (to 60 ms) in any second where
+    // it ran dry twice, and shrink by 5 ms after 5 calm seconds.
+    Uint32 m_TargetDeviceMs = 20;
+    Uint32 m_CalmSeconds = 0;
 };

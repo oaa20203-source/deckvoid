@@ -110,8 +110,9 @@ bool SdlAudioRenderer::submitAudio(int bytesWritten)
     // Catch up when audio has backed up in Moonlight's queue. Stock Moonlight
     // drops every chunk while more than 30 ms is waiting; on Wi-Fi, packets
     // arrive in bursts, so that dropped runs of audio and crackled. DeckVoid
-    // waits until 60 ms is waiting and drops at most every other chunk.
-    if (pendingMs > 60 && !m_DroppedLastChunk) {
+    // keeps the same 30 ms target (no extra delay) but drops at most every
+    // other chunk, so a burst costs short gaps instead of a run of silence.
+    if (pendingMs > 30 && !m_DroppedLastChunk) {
         m_DroppedLastChunk = true;
         m_StatDropped++;
         logAudioStats(pendingMs, deviceMsBefore);
@@ -129,8 +130,8 @@ bool SdlAudioRenderer::submitAudio(int bytesWritten)
             return false;
         }
 
-        // Only queue more samples where there is 50 ms or less in SDL's queue
-        if (SDL_GetQueuedAudioSize(m_AudioDevice) / m_FrameSize * m_FrameDurationMs <= 50) {
+        // Only queue more samples while SDL's queue is at or below the adaptive target
+        if (SDL_GetQueuedAudioSize(m_AudioDevice) / m_FrameSize * m_FrameDurationMs <= m_TargetDeviceMs) {
             break;
         }
 
@@ -165,11 +166,23 @@ void SdlAudioRenderer::logAudioStats(Uint32 pendingMs, Uint32 deviceMs)
         return;
     }
 
+    // Adapt the speaker buffer: as small as possible without audible gaps
+    const Uint32 previousTarget = m_TargetDeviceMs;
+    if (m_StatUnderruns >= 2) {
+        m_TargetDeviceMs = SDL_min(60u, m_TargetDeviceMs + 10);
+        m_CalmSeconds = 0;
+    }
+    else if (m_StatUnderruns == 0 && ++m_CalmSeconds >= 5) {
+        m_TargetDeviceMs = SDL_max(20u, m_TargetDeviceMs - 5);
+        m_CalmSeconds = 0;
+    }
+
     // One line per second, only when something is worth seeing
-    if (m_StatDropped != 0 || m_StatUnderruns != 0 || m_StatMaxPendingMs > 30) {
+    if (m_StatDropped != 0 || m_StatUnderruns != 0 || m_StatMaxPendingMs > 30 || previousTarget != m_TargetDeviceMs) {
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "Audio 1s: played %u, dropped %u, speaker ran dry %u, max waiting %u ms, max device queue %u ms",
-                    m_StatQueued, m_StatDropped, m_StatUnderruns, m_StatMaxPendingMs, m_StatMaxDeviceMs);
+                    "Audio 1s: played %u, dropped %u, speaker ran dry %u, max waiting %u ms, max device queue %u ms, speaker buffer %u -> %u ms",
+                    m_StatQueued, m_StatDropped, m_StatUnderruns, m_StatMaxPendingMs, m_StatMaxDeviceMs,
+                    previousTarget, m_TargetDeviceMs);
     }
     m_StatWindowStartMs = now;
     m_StatQueued = m_StatDropped = m_StatUnderruns = 0;

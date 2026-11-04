@@ -632,6 +632,23 @@ NvHTTP::getClipboard(int timeoutMs)
     return text;
 }
 
+int
+NvHTTP::setRuntimeBitrate(int kbps, int timeoutMs)
+{
+    try {
+        QString response = openConnectionToString(m_BaseUrlHttps, "bitrate",
+                                                  "bitrate=" + QString::number(kbps),
+                                                  timeoutMs, NvLogLevel::NVLL_ERROR);
+        verifyResponseStatus(response);
+        return 200;
+    } catch (const GfeHttpResponseException& e) {
+        return e.getStatusCode();
+    } catch (const QtNetworkReplyException& e) {
+        // An HTTP error without an XML body, e.g. a host without the endpoint
+        return e.getError() == QNetworkReply::ContentNotFoundError ? 404 : 0;
+    }
+}
+
 void
 NvHTTP::setClipboard(const QString& text, int timeoutMs)
 {

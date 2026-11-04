@@ -57,6 +57,7 @@
 #include <QImage>
 #include <QGuiApplication>
 #include <QCursor>
+#include "bitrateadapter.h"
 #include <QScreen>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -1539,6 +1540,9 @@ private:
             }
         }
 
+        // Stop adapting the bitrate before the connection goes away
+        BitrateAdapter::stop();
+
         // Finish cleanup of the connection state
         LiStopConnection();
 
@@ -2061,6 +2065,11 @@ bool Session::startConnectionAsync()
     }
 
     m_HostLaunchWarning = LaunchWarning::text(launchWarning);
+
+    // Adapt the bitrate to the link (PyroWave has its own rate control)
+    if (!(m_SupportedVideoFormats & VIDEO_FORMAT_MASK_PYROWAVE)) {
+        BitrateAdapter::start(m_Computer, m_StreamConfig.bitrate);
+    }
     emit connectionStarted();
     return true;
 }

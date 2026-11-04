@@ -208,6 +208,11 @@ public:
     QString getClipboard(int timeoutMs = CLIPBOARD_TIMEOUT_MS);
     void setClipboard(const QString& text, int timeoutMs = CLIPBOARD_TIMEOUT_MS);
 
+    // Vibepollo runtime bitrate (HTTPS /bitrate?bitrate=kbps). Returns the
+    // host's status code: 200 applied, 403/404 refused or unsupported, 0 on a
+    // network error. Never throws.
+    int setRuntimeBitrate(int kbps, int timeoutMs = 2000);
+
     QImage
     getBoxArt(int appId);
 
