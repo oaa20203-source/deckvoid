@@ -71,6 +71,14 @@ public:
 private:
     static void requestSdl(const char* name, Role role)
     {
+#ifdef __APPLE__
+        // SDL's priority request only sets a pthread scheduling priority, which
+        // macOS largely ignores. QoS classes decide which cores a thread may use
+        // and how quickly it runs when the app is busy, so set the same class
+        // VoidLink uses (decode user-initiated, deadline work user-interactive).
+        pthread_set_qos_class_self_np(role == Role::Deadline ? QOS_CLASS_USER_INTERACTIVE
+                                                             : QOS_CLASS_USER_INITIATED, 0);
+#endif
 #if SDL_VERSION_ATLEAST(2, 0, 9)
         if (role == Role::Deadline) {
             if (SDL_SetThreadPriority(SDL_THREAD_PRIORITY_TIME_CRITICAL) == 0) {
