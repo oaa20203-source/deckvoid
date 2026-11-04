@@ -6,6 +6,8 @@
 #include "session.h"
 #include "backend/apollo/apollolaunchverb.h"
 #include "backend/apollo/apollolaunchoptions.h"
+#include "backend/apollo/apollopermissions.h"
+#include <QClipboard>
 #include "settings/streamingpreferences.h"
 #include "streaming/streamutils.h"
 #ifdef Q_OS_DARWIN
@@ -42,6 +44,8 @@
 #define SDL_CODE_GAMECONTROLLER_SET_MOTION_EVENT_STATE 103
 #define SDL_CODE_GAMECONTROLLER_SET_CONTROLLER_LED 104
 #define SDL_CODE_GAMECONTROLLER_SET_ADAPTIVE_TRIGGERS 105
+// 106 is SDL_CODE_STEAM_CONTROLLER_LINK (input/steamcontroller/steamcontrollerhost.h)
+#define SDL_CODE_APOLLO_CLIPBOARD 107
 
 #include <openssl/rand.h>
 
@@ -1517,6 +1521,24 @@ private:
         // LiStartConnection() and LiStopConnection().
         SDL_assert(m_Session->m_VideoDecoder == nullptr);
 
+        // Last clipboard pull while the host still sees our stream (it answers 403 after).
+        if (m_Session->m_ClipboardSync.shouldPullOnDisconnect()) {
+            try {
+                NvHTTP http(m_Session->m_Computer);
+                const QString hostText = http.getClipboard();
+                // SDL video is shut down by now and the Qt loop runs again: use QClipboard.
+                QMetaObject::invokeMethod(QCoreApplication::instance(), [hostText]() {
+                    QClipboard* clipboard = QGuiApplication::clipboard();
+                    if (clipboard && !hostText.isEmpty() && clipboard->text() != hostText) {
+                        clipboard->setText(hostText);
+                    }
+                }, Qt::QueuedConnection);
+            } catch (const GfeHttpResponseException& e) {
+                qInfo() << "Clipboard pull on disconnect refused:" << e.getStatusCode();
+            } catch (const QtNetworkReplyException&) {
+            }
+        }
+
         // Finish cleanup of the connection state
         LiStopConnection();
 
@@ -2356,6 +2378,22 @@ void Session::exec()
         m_HostLaunchWarning.clear();
     }
 
+    {
+        // Apollo clipboard sync for this session, limited by the host's permissions.
+        const auto& apollo = m_Computer->apollo;
+        const bool known = m_Computer->isApollo() && apollo.permissionsKnown;
+        m_ClipboardSync = ApolloClipboardSync(
+            (ApolloClipboardSync::Mode)m_Preferences->apolloClipboardSync,
+            known && ApolloPermissions::has(apollo.permissions, ApolloPermissions::ClipboardRead),
+            known && ApolloPermissions::has(apollo.permissions, ApolloPermissions::ClipboardSet));
+        char* localText = SDL_GetClipboardText();
+        const QString text = localText ? QString::fromUtf8(localText) : QString();
+        SDL_free(localText);
+        if (m_ClipboardSync.shouldPushOnFocusGain(text)) {
+            startClipboardTransfer(true, text);
+        }
+    }
+
     for (;;) {
         if (hostWarningVisible && std::chrono::steady_clock::now() >= hostWarningExpiresAt) {
             m_OverlayManager.setStatusMessage(Overlay::StatusSource::HostLaunch, "");
@@ -2408,6 +2446,9 @@ void Session::exec()
 
         case SDL_USEREVENT:
             switch (event.user.code) {
+            case SDL_CODE_APOLLO_CLIPBOARD:
+                handleClipboardResult(event);
+                break;
             case SDL_CODE_FRAME_READY:
                 if (m_VideoDecoder != nullptr) {
                     m_VideoDecoder->renderFrameOnMainThread();
@@ -2473,12 +2514,23 @@ void Session::exec()
                     m_AudioMuted = true;
                 }
                 m_InputHandler->notifyFocusLost();
+                if (m_ClipboardSync.shouldPullOnFocusLoss()) {
+                    startClipboardTransfer(false, QString());
+                }
                 break;
             case SDL_WINDOWEVENT_FOCUS_GAINED:
                 if (m_Preferences->muteOnFocusLoss) {
                     m_AudioMuted = false;
                 }
                 m_InputHandler->notifyFocusGained();
+                {
+                    char* localText = SDL_GetClipboardText();
+                    const QString text = localText ? QString::fromUtf8(localText) : QString();
+                    SDL_free(localText);
+                    if (m_ClipboardSync.shouldPushOnFocusGain(text)) {
+                        startClipboardTransfer(true, text);
+                    }
+                }
                 break;
             case SDL_WINDOWEVENT_LEAVE:
                 m_InputHandler->notifyMouseLeave();
@@ -2856,4 +2908,79 @@ QString Session::vrrCalibrationContext() const
     return QString("vrr13-history-1|%1|%2|%3|%4|%5")
         .arg(m_Computer->uuid).arg(m_App.id).arg(m_StreamConfig.bitrate)
         .arg(QSysInfo::kernelVersion()).arg(networks.join(";"));
+}
+
+
+namespace {
+// Runs one Apollo clipboard request off the SDL main thread and posts the result back.
+class ApolloClipboardTask : public QRunnable
+{
+public:
+    ApolloClipboardTask(NvComputer* computer, bool push, QString text)
+        : m_Computer(computer), m_Push(push), m_Text(std::move(text)) {}
+
+    void run() override
+    {
+        int status = 0;
+        QString* pulled = nullptr;
+        try {
+            NvHTTP http(m_Computer);
+            if (m_Push) {
+                http.setClipboard(m_Text);
+            }
+            else {
+                pulled = new QString(http.getClipboard());
+            }
+        } catch (const GfeHttpResponseException& e) {
+            status = e.getStatusCode();
+        } catch (const QtNetworkReplyException&) {
+            status = -1;
+        }
+
+        SDL_Event event = {};
+        event.type = SDL_USEREVENT;
+        event.user.code = SDL_CODE_APOLLO_CLIPBOARD;
+        event.user.data1 = pulled;
+        event.user.data2 = (void*)(intptr_t)status;
+        if (SDL_PushEvent(&event) <= 0) {
+            delete pulled;
+        }
+    }
+
+private:
+    NvComputer* m_Computer;
+    bool m_Push;
+    QString m_Text;
+};
+}
+
+void Session::startClipboardTransfer(bool push, const QString& text)
+{
+    if (push) {
+        // Record before sending so a quick pull cannot bounce the text back.
+        m_ClipboardSync.pushed(text);
+    }
+    QThreadPool::globalInstance()->start(new ApolloClipboardTask(m_Computer, push, text));
+}
+
+void Session::handleClipboardResult(SDL_Event& event)
+{
+    QString* pulled = static_cast<QString*>(event.user.data1);
+    const int status = (int)(intptr_t)event.user.data2;
+    if (status == 401) {
+        qWarning() << "Host refused clipboard access (permission); clipboard sync disabled for this session";
+        m_ClipboardSync.permissionDenied();
+    }
+    else if (status != 0) {
+        qInfo() << "Clipboard request failed:" << status;
+    }
+    if (pulled) {
+        char* localText = SDL_GetClipboardText();
+        const QString local = localText ? QString::fromUtf8(localText) : QString();
+        SDL_free(localText);
+        if (m_ClipboardSync.acceptPulled(*pulled, local)) {
+            SDL_SetClipboardText(pulled->toUtf8().constData());
+        }
+        delete pulled;
+    }
 }

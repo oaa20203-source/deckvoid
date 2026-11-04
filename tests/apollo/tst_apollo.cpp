@@ -7,6 +7,7 @@
 #include "backend/apollo/apollolaunchverb.h"
 #include "backend/apollo/apollolaunchoptions.h"
 #include "backend/apollo/apollootp.h"
+#include "backend/apollo/apolloclipboardsync.h"
 #include "backend/nvapp.h"
 
 #include <QSettings>
@@ -353,6 +354,55 @@ private slots:
         QCOMPARE(ApolloOtp::deviceNameArg("Omar's Deck"), QString("Omar%27s%20Deck"));
         QCOMPARE(ApolloOtp::deviceNameArg(""), QString("roth"));       // stock fallback
         QCOMPARE(ApolloOtp::deviceNameArg(" SELF "), QString("roth")); // host refuses "self"
+    }
+    void clipboardOffNeverSyncs()
+    {
+        ApolloClipboardSync sync(ApolloClipboardSync::Off, true, true);
+        QVERIFY(!sync.shouldPushOnFocusGain("text"));
+        QVERIFY(!sync.shouldPullOnFocusLoss());
+        QVERIFY(!sync.shouldPullOnDisconnect());
+    }
+
+    void clipboardSmartFollowsPermissions()
+    {
+        ApolloClipboardSync readOnly(ApolloClipboardSync::Smart, true, false);
+        QVERIFY(!readOnly.shouldPushOnFocusGain("text"));
+        QVERIFY(readOnly.shouldPullOnFocusLoss());
+        ApolloClipboardSync setOnly(ApolloClipboardSync::Smart, false, true);
+        QVERIFY(setOnly.shouldPushOnFocusGain("text"));
+        QVERIFY(!setOnly.shouldPullOnFocusLoss());
+        QVERIFY(!setOnly.shouldPullOnDisconnect());
+    }
+
+    void clipboardManualOnlyOnRequest()
+    {
+        ApolloClipboardSync sync(ApolloClipboardSync::Manual, true, true);
+        QVERIFY(!sync.shouldPushOnFocusGain("text"));
+        QVERIFY(!sync.shouldPullOnFocusLoss());
+        QVERIFY(sync.canPush());
+        QVERIFY(sync.canPull());
+    }
+
+    void clipboardLoopGuard()
+    {
+        ApolloClipboardSync sync(ApolloClipboardSync::Smart, true, true);
+        QVERIFY(!sync.shouldPushOnFocusGain(""));               // nothing to push
+        QVERIFY(sync.shouldPushOnFocusGain("from mac"));
+        sync.pushed("from mac");
+        QVERIFY(!sync.shouldPushOnFocusGain("from mac"));       // unchanged since last sync
+        QVERIFY(!sync.acceptPulled("from mac", "from mac"));    // host echoes what we sent
+        QVERIFY(sync.acceptPulled("from pc", "from mac"));      // new host text: set it locally
+        QVERIFY(!sync.shouldPushOnFocusGain("from pc"));        // and don't send it back
+        QVERIFY(!sync.acceptPulled("", "from pc"));             // empty host clipboard never wipes ours
+    }
+
+    void clipboardPermissionLossStopsSync()
+    {
+        ApolloClipboardSync sync(ApolloClipboardSync::Smart, true, true);
+        sync.permissionDenied();                                // host answered 401
+        QVERIFY(!sync.shouldPushOnFocusGain("x"));
+        QVERIFY(!sync.shouldPullOnFocusLoss());
+        QVERIFY(!sync.canPull());
     }
 };
 

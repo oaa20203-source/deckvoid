@@ -197,6 +197,12 @@ public:
     QVector<NvApp>
     getAppList();
 
+    // Apollo clipboard (HTTPS, needs an active stream from this client and the
+    // clipboard_read / clipboard_set permission). Throws GfeHttpResponseException
+    // with the HTTP status: 401 permission, 403 no active stream.
+    QString getClipboard();
+    void setClipboard(const QString& text);
+
     QImage
     getBoxArt(int appId);
 
@@ -219,7 +225,9 @@ private:
                    const std::function<QString(QNetworkReply*)>& receiveHeaders = {},
                    bool powerAction = false,
                    QNetworkAccessManager::Operation operation = QNetworkAccessManager::GetOperation,
-                   QSslCertificate pairedServerCert = QSslCertificate());
+                   QSslCertificate pairedServerCert = QSslCertificate(),
+                   const QByteArray& body = QByteArray(),
+                   const QString& contentType = QString());
 
     NvAddress m_Address;
     QNetworkAccessManager* m_Nam;

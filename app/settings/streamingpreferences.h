@@ -191,6 +191,7 @@ public:
     Q_PROPERTY(QString apolloClientName MEMBER apolloClientName NOTIFY apolloSettingsChanged)
     Q_PROPERTY(int apolloVirtualDisplay MEMBER apolloVirtualDisplay NOTIFY apolloSettingsChanged)
     Q_PROPERTY(int apolloScaleFactor MEMBER apolloScaleFactor NOTIFY apolloSettingsChanged)
+    Q_PROPERTY(int apolloClipboardSync MEMBER apolloClipboardSync NOTIFY apolloSettingsChanged)
     Q_PROPERTY(bool absoluteMouseMode MEMBER absoluteMouseMode NOTIFY absoluteMouseModeChanged)
     Q_PROPERTY(bool absoluteTouchMode MEMBER absoluteTouchMode NOTIFY absoluteTouchModeChanged)
     Q_PROPERTY(bool framePacing MEMBER framePacing NOTIFY framePacingChanged)
@@ -265,6 +266,7 @@ public:
     QString apolloClientName;  // sent as devicename/clientName; defaults to the machine's host name
     int apolloVirtualDisplay;  // -1 host decides, 0 physical display, 1 virtual display
     int apolloScaleFactor;     // percent, 20..200; 100 = native
+    int apolloClipboardSync;   // ApolloClipboardSync::Mode: 0 off, 1 manual, 2 smart
     bool absoluteMouseMode;
     bool absoluteTouchMode;
     bool framePacing;

@@ -2212,6 +2212,38 @@ Flickable {
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Renders the host's virtual display larger or smaller than the stream. Above 100% the desktop looks sharper and smaller on the Deck; the stream resolution does not change.")
                 }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Clipboard sync")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                AutoResizingComboBox {
+                    id: apolloClipboardComboBox
+                    textRole: "text"
+                    model: ListModel {
+                        ListElement { text: qsTr("Off"); val: 0 }
+                        ListElement { text: qsTr("Manual (from the in-stream menu)"); val: 1 }
+                        ListElement { text: qsTr("Automatic"); val: 2 }
+                    }
+                    Component.onCompleted: {
+                        currentIndex = 2
+                        for (var i = 0; i < model.count; i++) {
+                            if (model.get(i).val === StreamingPreferences.apolloClipboardSync) {
+                                currentIndex = i
+                                break
+                            }
+                        }
+                    }
+                    onActivated: StreamingPreferences.apolloClipboardSync = model.get(currentIndex).val
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 6000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Automatic sends this device's clipboard to the host when you return to the stream, and copies the host's clipboard here when you leave it or disconnect. Needs the host's clipboard permissions for this device.")
+                }
             }
         }
 

@@ -622,6 +622,26 @@ NvHTTP::openConnectionToString(QUrl baseUrl,
     return ret;
 }
 
+QString
+NvHTTP::getClipboard()
+{
+    QNetworkReply* reply = openConnection(m_BaseUrlHttps, "actions/clipboard", "type=text",
+                                          REQUEST_TIMEOUT_MS, NvLogLevel::NVLL_ERROR);
+    QString text = QString::fromUtf8(reply->readAll());
+    delete reply;
+    return text;
+}
+
+void
+NvHTTP::setClipboard(const QString& text)
+{
+    QNetworkReply* reply = openConnection(m_BaseUrlHttps, "actions/clipboard", "type=text",
+                                          REQUEST_TIMEOUT_MS, NvLogLevel::NVLL_ERROR, {}, false,
+                                          QNetworkAccessManager::PostOperation, QSslCertificate(),
+                                          text.toUtf8(), QStringLiteral("text/plain; charset=utf-8"));
+    delete reply;
+}
+
 QNetworkReply*
 NvHTTP::openConnection(QUrl baseUrl,
                        QString command,
@@ -631,7 +651,9 @@ NvHTTP::openConnection(QUrl baseUrl,
                        const std::function<QString(QNetworkReply*)>& receiveHeaders,
                        bool powerAction,
                        QNetworkAccessManager::Operation operation,
-                       QSslCertificate pairedServerCert)
+                       QSslCertificate pairedServerCert,
+                       const QByteArray& body,
+                       const QString& contentType)
 {
     // Port must be set
     Q_ASSERT(baseUrl.port(0) != 0);
@@ -655,6 +677,9 @@ NvHTTP::openConnection(QUrl baseUrl,
         request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
         if (operation == QNetworkAccessManager::PostOperation)
             request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    }
+    if (!contentType.isEmpty()) {
+        request.setHeader(QNetworkRequest::ContentTypeHeader, contentType);
     }
 
     // Add our client certificate
@@ -713,7 +738,7 @@ NvHTTP::openConnection(QUrl baseUrl,
         sslErrorsConnection = connect(network, &QNetworkAccessManager::sslErrors, this, &NvHTTP::handleSslErrors);
     }
     QNetworkReply* reply = operation == QNetworkAccessManager::PostOperation
-        ? network->post(request, QByteArray()) : network->get(request);
+        ? network->post(request, body) : network->get(request);
     if (powerAction) connect(reply, &QObject::destroyed, network, &QObject::deleteLater);
 
     // Run the request with a timeout if requested
@@ -807,6 +832,16 @@ NvHTTP::openConnection(QUrl baseUrl,
             delete reply;
             if (status >= 400) throw GfeHttpResponseException(status, tr("The host refused sleep. Check permission and end all host sessions before confirming again."));
             throw QtNetworkReplyException(error, tr("The sleep request was not acknowledged. No automatic retry will occur."));
+        }
+        if (command == "actions/clipboard") {
+            // The host answers with bare HTTP status codes, not XML: keep the status
+            // so callers can tell 401 (permission) from 403 (no active stream).
+            const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if (status >= 400) {
+                GfeHttpResponseException exception(status, QString("Clipboard request refused (HTTP %1)").arg(status));
+                delete reply;
+                throw exception;
+            }
         }
         if (logLevel >= NvLogLevel::NVLL_ERROR) {
             qWarning() << command << "request failed with error:" << reply->error();

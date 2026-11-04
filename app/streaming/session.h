@@ -1,5 +1,7 @@
 #pragma once
 
+#include "backend/apollo/apolloclipboardsync.h"
+
 #include <QSemaphore>
 #include <QQuickWindow>
 
@@ -323,6 +325,12 @@ private:
     QStringList m_LaunchWarnings;
     QString m_HostLaunchWarning;
     int m_ApolloVirtualDisplay = -2;
+
+    // Apollo clipboard sync. State is only touched on the SDL main thread while
+    // streaming; network calls run on the thread pool (startClipboardTransfer).
+    ApolloClipboardSync m_ClipboardSync;
+    void startClipboardTransfer(bool push, const QString& text);
+    void handleClipboardResult(SDL_Event& event);
     bool m_ShouldExit;
 
     bool m_AsyncConnectionSuccess;
