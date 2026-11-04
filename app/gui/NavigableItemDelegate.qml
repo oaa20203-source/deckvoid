@@ -9,7 +9,8 @@ ItemDelegate {
     property Item grid
     readonly property bool lifted: highlighted || (Theme.mouseMode && hovered)
 
-    highlighted: grid.activeFocus && grid.currentItem === this
+    // The selected card stays outlined even when the window is in the background (Figma)
+    highlighted: grid.currentItem === this
 
     // Flat kit card; focus is a 2 px ink outline with a 4 px gap. No lift, no glow.
     background: Item {

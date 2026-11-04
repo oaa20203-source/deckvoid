@@ -81,6 +81,7 @@ FocusScope {
     function artWord(name) {
         var n = name || ""
         if (n.toLowerCase().indexOf("big picture") >= 0) return "Steam"
+        if (n.toLowerCase() === "desktop") return "Desk"   // as in the Figma mockup
         // Last word tells similar names apart ("Remote Monitor" -> "Monitor")
         var words = n.split(" ")
         return words[words.length - 1]
@@ -171,10 +172,11 @@ FocusScope {
         appModel.computerLost.connect(computerLost)
         activated = true
 
-        // Highlight the first item if a gamepad is connected
-        if (currentIndex === -1 && SdlGamepadKeyNavigation.getConnectedGamepads() > 0) {
+        // Select (and outline) the first card on open, as in the Figma mockup
+        if (currentIndex === -1 && count > 0) {
             currentIndex = 0
         }
+        appList.forceActiveFocus()
 
         if (!showGames && !showHiddenGames) {
             // Check if there's a direct launch app
@@ -218,6 +220,8 @@ import AppModel 1.0; AppModel {}', parent, '')
         boundsBehavior: Flickable.StopAtBounds
         highlightFollowsCurrentItem: false
         model: appsModel
+        // Cards can arrive after the page opens; select the first one then
+        onCountChanged: if (currentIndex === -1 && count > 0) currentIndex = 0
     }
 
     DelegateModel {

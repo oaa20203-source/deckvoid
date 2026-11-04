@@ -6,7 +6,7 @@ import DeckVoidTheme 1.0
 Item {
     id: card
     property bool selected: false
-    readonly property bool lifted: (!Theme.mouseMode && selected) || (Theme.mouseMode && hover.hovered)
+    readonly property bool lifted: selected || (Theme.mouseMode && hover.hovered)
     signal activated()
     signal selectRequested()
 

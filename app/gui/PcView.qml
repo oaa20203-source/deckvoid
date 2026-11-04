@@ -79,8 +79,8 @@ FocusScope {
         // Setup signals on CM
         ComputerManager.computerAddCompleted.connect(addComplete)
 
-        // Highlight the first item if a gamepad is connected
-        if (currentIndex === -1 && (SdlGamepadKeyNavigation.getConnectedGamepads() > 0 || Theme.controllerMode)) {
+        // Select (and outline) the first card on open, as in the Figma mockup
+        if (currentIndex === -1) {
             currentIndex = 0
         }
     }
@@ -335,7 +335,7 @@ FocusScope {
                             runningApp: model.runningApp
                             address: model.address
                             number: index + 1
-                            selected: pcView.currentIndex === index && pcView.activeFocus
+                            selected: pcView.currentIndex === index
                             onSelectRequested: pcView.currentIndex = index
                             onActivated: hostItem.activate()
                             onPairRequested: hostItem.pair()
@@ -417,7 +417,7 @@ FocusScope {
                     id: addCard
                     width: Math.min(260, grid.width)
                     height: 263
-                    selected: pcView.currentIndex === hostRepeater.count && pcView.activeFocus
+                    selected: pcView.currentIndex === hostRepeater.count
                     onSelectRequested: pcView.currentIndex = hostRepeater.count
                     onActivated: addPcDialog.open()
                 }
