@@ -6,7 +6,7 @@ import DeckVoidTheme 1.0
 Item {
     id: card
     property bool selected: false
-    readonly property bool lifted: selected || (Theme.mouseMode && hover.hovered)
+    readonly property bool lifted: selected
     signal activated()
     signal selectRequested()
 
@@ -69,6 +69,6 @@ Item {
         }
     }
 
-    HoverHandler { id: hover; onHoveredChanged: if (hovered && Theme.mouseMode) card.selectRequested() }
+    HoverHandler { id: hover; onHoveredChanged: if (hovered) card.selectRequested() }
     TapHandler { onTapped: { card.selectRequested(); card.activated() } }
 }

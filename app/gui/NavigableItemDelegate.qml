@@ -7,7 +7,9 @@ ItemDelegate {
     id: tile
     // A GridView or a ListView (the Apps row)
     property Item grid
-    readonly property bool lifted: highlighted || (Theme.mouseMode && hovered)
+    // One outline at a time: hovering a card makes it the selected one
+    readonly property bool lifted: highlighted
+    onHoveredChanged: if (hovered && grid) grid.currentIndex = index
 
     // The selected card stays outlined even when the window is in the background (Figma)
     highlighted: grid.currentItem === this

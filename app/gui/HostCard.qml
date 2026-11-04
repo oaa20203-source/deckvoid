@@ -21,7 +21,8 @@ Item {
     // Selection: keyboard/controller focus, or the mouse hovering over the card.
     property bool selected: false
     readonly property bool hovered: hover.hovered
-    readonly property bool lifted: selected || (Theme.mouseMode && hovered)
+    // One outline at a time: hovering a card selects it (see HoverHandler)
+    readonly property bool lifted: selected
 
     signal activated()        // A / Return / click: open apps, pair, or wake
     signal pairRequested()    // X: pair with a PIN
@@ -169,7 +170,7 @@ Item {
         }
     }
 
-    HoverHandler { id: hover; onHoveredChanged: if (hovered && Theme.mouseMode) card.selectRequested() }
+    HoverHandler { id: hover; onHoveredChanged: if (hovered) card.selectRequested() }
 
     TapHandler {
         acceptedButtons: Qt.LeftButton
