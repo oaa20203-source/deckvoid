@@ -15,6 +15,7 @@
         "--device=all",
         "--talk-name=org.freedesktop.ScreenSaver",
         "--talk-name=org.kde.KWin",
+        "--talk-name=org.freedesktop.Flatpak",
         "--system-talk-name=org.freedesktop.RealtimeKit1",
         "--env=IGNORE_RFI_LATENCY_BUG=1",
         "--env=QT_QUICK_CONTROLS_STYLE=Material",
