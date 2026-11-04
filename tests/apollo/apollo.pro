@@ -4,8 +4,9 @@ QT = core network testlib
 CONFIG += console testcase c++17
 CONFIG -= app_bundle
 INCLUDEPATH += $$PWD/../../app
-SOURCES += $$PWD/tst_apollo.cpp $$PWD/../../app/backend/nvapp.cpp
+SOURCES += $$PWD/tst_apollo.cpp $$PWD/../../app/backend/nvapp.cpp $$PWD/../../app/backend/inkupdater.cpp
 HEADERS += \
+    $$PWD/../../app/backend/inkupdater.h \
     $$PWD/../../app/backend/apollo/apollohostinfo.h \
     $$PWD/../../app/backend/apollo/apollopermissions.h \
     $$PWD/../../app/backend/apollo/apollolaunchverb.h \

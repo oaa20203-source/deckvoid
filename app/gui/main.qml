@@ -6,6 +6,7 @@ import QtQuick.Controls.Material 2.2
 
 import ComputerManager 1.0
 import AutoUpdateChecker 1.0
+import InkUpdater 1.0
 import StreamingPreferences 1.0
 import SystemProperties 1.0
 import SdlGamepadKeyNavigation 1.0
@@ -360,54 +361,35 @@ ApplicationWindow {
             }
         }
 
-        // Right: update notice as its own cell
+        // Right: the !ink updater as its own cell (Linux Flatpak only). It shows
+        // "Update to <build> ->", then progress, and installs on click or tap.
         Rectangle {
             id: updateButton
-            property string browserUrl: ""
-            property string updateVersion: ""
-            visible: false
+            readonly property bool busy: InkUpdater.state === "downloading" || InkUpdater.state === "installing" ||
+                                         InkUpdater.state === "restarting"
+            visible: InkUpdater.supported && InkUpdater.statusText !== ""
             anchors.right: parent.right
             height: parent.height - 1
             width: updateText.implicitWidth + 40
-            color: updateArea.containsMouse ? Theme.ash : "transparent"
+            color: InkUpdater.state === "error" ? Theme.accentTint
+                 : (updateArea.containsMouse && !busy ? Theme.ash : "transparent")
             Rectangle { anchors.left: parent.left; width: 1; height: parent.height; color: Theme.ink }
-            Text { id: updateText; anchors.centerIn: parent; text: qsTr("Update available →"); color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Medium; font.pixelSize: 14 }
+            Text {
+                id: updateText
+                anchors.centerIn: parent
+                text: InkUpdater.statusText
+                color: Theme.ink
+                font.family: updateButton.busy ? Theme.monoFont : Theme.sansFont
+                font.weight: Font.Medium
+                font.pixelSize: updateButton.busy ? 13 : 14
+            }
             MouseArea {
                 id: updateArea
                 anchors.fill: parent
                 hoverEnabled: true
+                enabled: !updateButton.busy
                 cursorShape: Qt.PointingHandCursor
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
-                onClicked: function(mouse) {
-                    if (mouse.button === Qt.RightButton) {
-                        AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
-                        updateButton.visible = false
-                    }
-                    else if (SystemProperties.hasBrowser) {
-                        Qt.openUrlExternally(updateButton.browserUrl)
-                        AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
-                        updateButton.visible = false
-                    }
-                }
-            }
-            ToolTip.visible: updateArea.containsMouse
-            ToolTip.text: qsTr("Update available for !ink: Version %1").arg(updateVersion)
-
-            function updateAvailable(version, url) {
-                updateButton.browserUrl = url
-                updateButton.updateVersion = version
-                updateButton.visible = true
-            }
-            Connections {
-                target: AutoUpdateChecker
-                function onNotifyPrereleasesChanged() {
-                    updateButton.visible = false
-                    AutoUpdateChecker.start()
-                }
-            }
-            Component.onCompleted: {
-                AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
-                AutoUpdateChecker.start()
+                onClicked: InkUpdater.update()
             }
         }
 

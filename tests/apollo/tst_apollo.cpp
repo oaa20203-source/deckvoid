@@ -9,6 +9,7 @@
 #include "backend/apollo/apollootp.h"
 #include "backend/apollo/apolloclipboardsync.h"
 #include "backend/apollo/apolloquickmenu.h"
+#include "backend/inkupdater.h"
 #include "backend/nvapp.h"
 
 #include <QSettings>
@@ -65,6 +66,20 @@ class TestApollo : public QObject
     Q_OBJECT
 
 private slots:
+    void updaterReadsReleaseVersion()
+    {
+        QCOMPARE(InkUpdater::versionFromReleaseTitle("Latest Steam Deck build (0.1.0-99685c8)"), QString("0.1.0-99685c8"));
+        QCOMPARE(InkUpdater::versionFromReleaseTitle("Latest Steam Deck build (0.1.0-ee27f54) "), QString("0.1.0-ee27f54"));
+        QVERIFY(InkUpdater::versionFromReleaseTitle("Latest Steam Deck build").isEmpty());
+        QVERIFY(InkUpdater::versionFromReleaseTitle("").isEmpty());
+    }
+    void updaterOffersOnlyADifferentBuild()
+    {
+        QVERIFY(InkUpdater::isNewer("0.1.0-99685c8", "0.1.0-00cdcaf"));
+        QVERIFY(!InkUpdater::isNewer("0.1.0-00cdcaf", "0.1.0-00cdcaf"));
+        QVERIFY(!InkUpdater::isNewer("0.1.0-00cdcaf", ""));
+        QVERIFY(!InkUpdater::isNewer("", "0.1.0-00cdcaf"));
+    }
     void pairedApolloHost()
     {
         const auto info = ApolloHostInfo::fromServerInfo(kPairedApollo);
