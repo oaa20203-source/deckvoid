@@ -22,7 +22,10 @@ FocusScope {
     // Selected card: 0..count-1 are PCs, count is the "Add a PC" card. -1 until used.
     property int currentIndex: -1
     readonly property int count: hostRepeater.count
-    readonly property int columns: 4
+    // At least 4 columns (the Deck's 1280 px); larger windows get more columns
+    // instead of larger cards.
+    readonly property int maxCardWidth: Theme.mouseMode ? 330 : 300
+    readonly property int columns: Math.max(4, Math.ceil((width - 2 * Theme.pageGutter + Theme.gridGap) / (maxCardWidth + Theme.gridGap)))
     readonly property var selectedCard: currentIndex >= 0 && currentIndex < count ? hostRepeater.itemAt(currentIndex) : null
 
     // Controller footer hints for the selected card (read by main.qml).
@@ -263,7 +266,7 @@ FocusScope {
                 columnSpacing: Theme.gridGap
                 rowSpacing: Theme.gridGap + 8
                 readonly property real cardWidth: (width - (columns - 1) * columnSpacing) / columns
-                readonly property real cardHeight: Math.round(cardWidth * 0.96)
+                readonly property real cardHeight: Math.round(cardWidth * (Theme.touchMode ? 1.18 : (Theme.mouseMode ? 0.8 : 0.94)))
 
                 Repeater {
                     id: hostRepeater

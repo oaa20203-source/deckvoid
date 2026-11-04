@@ -817,6 +817,12 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
+    // DeckVoid uses a light theme everywhere. Without this, native macOS menus and
+    // dropdowns follow the system dark mode and clash with the light UI.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    app.styleHints()->setColorScheme(Qt::ColorScheme::Light);
+#endif
+
 #ifdef Q_OS_DARWIN
     // macOS defaults "Keyboard navigation" to text fields and lists only, which
     // prevents Tab (and the gamepad navigation that synthesizes it) from moving

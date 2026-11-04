@@ -2,6 +2,7 @@ import QtQuick 2.9
 import QtQuick.Controls 2.2
 
 import SdlGamepadKeyNavigation 1.0
+import DeckVoidTheme 1.0
 
 // https://stackoverflow.com/questions/45029968/how-do-i-set-the-combobox-width-to-fit-the-largest-item
 ComboBox {
@@ -14,9 +15,9 @@ ComboBox {
     // Keep the menu opaque, including software-rendered Qt Quick previews.
     // The Material elevation layer can otherwise hide the menu background.
     popup.background: Rectangle {
-        color: "#383838"
-        radius: 6
-        border.color: "#707070"
+        color: Theme.surface
+        radius: 12
+        border.color: Theme.lineStrong
     }
 
     TextMetrics {
