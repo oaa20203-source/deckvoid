@@ -16,6 +16,10 @@
         <file>res/warning_FILL1_wght300_GRAD200_opsz24.svg</file>
         <file>res/stop_FILL1_wght700_GRAD200_opsz48.svg</file>
         <file>res/no_app_image.png</file>
+        <file>res/fonts/Urbanist.ttf</file>
+        <file>res/fonts/Quicksand.ttf</file>
+        <file>res/fonts/Urbanist-OFL.txt</file>
+        <file>res/fonts/Quicksand-OFL.txt</file>
         <file>res/settings.svg</file>
         <file>res/arrow_left.svg</file>
         <file>res/question_mark.svg</file>

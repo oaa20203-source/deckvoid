@@ -58,6 +58,7 @@
 #include "streaming/video/pyrowave/pyrowavecalibrator.h"
 #include "backend/networkbuffers.h"
 #include "gui/sdlgamepadkeynavigation.h"
+#include "gui/inputmode.h"
 #include "windowsvblankvirtualization.h"
 
 #if defined(Q_OS_WIN32)
@@ -1001,8 +1002,8 @@ int main(int argc, char *argv[])
 
     // This is necessary to show our icon correctly on Wayland
     app.setDesktopFileName("io.github.oaa20203_source.deckvoid");
-    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "com.moonlight_stream.Moonlight");
-    qputenv("SDL_VIDEO_X11_WMCLASS", "com.moonlight_stream.Moonlight");
+    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "io.github.oaa20203_source.deckvoid");
+    qputenv("SDL_VIDEO_X11_WMCLASS", "io.github.oaa20203_source.deckvoid");
 
     // Register our C++ types for QML
     qmlRegisterType<ComputerModel>("ComputerModel", 1, 0, "ComputerModel");
@@ -1028,6 +1029,9 @@ int main(int argc, char *argv[])
                                                       [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {
                                                           return new SdlGamepadKeyNavigation(StreamingPreferences::get(qmlEngine));
                                                       });
+    // DeckVoid theme and input mode (docs/design/DESIGN.md)
+    qmlRegisterSingletonInstance("InputMode", 1, 0, "InputMode", InputMode::instance());
+    qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/gui/Theme.qml")), "DeckVoidTheme", 1, 0, "Theme");
     qmlRegisterSingletonType<StreamingPreferences>("StreamingPreferences", 1, 0,
                                                    "StreamingPreferences",
                                                    [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {

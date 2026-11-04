@@ -1,0 +1,563 @@
+<title>DeckVoid Style Picker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Quicksand:wght@500;600;700&family=Nunito:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: controls column left; right stage has a device bar, screen tabs and the live preview scaled to fit. Single light theme on purpose: it previews a light UI. */
+:root{
+  --bg:#F4F1EC; --panel:#FFFFFF; --ink:#2A2420; --muted:#6B5F55; --line:#E6DED2; --sel:#2A2420; --hi:#F7B267;
+  --ui:'Quicksand', system-ui, sans-serif; --head:'Urbanist', system-ui, sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-weight:500;margin:0}
+.wrap{display:flex;flex-wrap:wrap;gap:24px;padding-block:24px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));max-width:1760px;margin:0 auto;align-items:flex-start}
+.controls{flex:1 1 320px;max-width:400px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.stage{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px;position:sticky;top:env(safe-area-inset-top,0px)}
+h1{font-family:var(--head);font-weight:800;font-size:28px;margin:0;text-wrap:balance}
+.lede{margin:4px 0 0;color:var(--muted);font-size:15px;line-height:1.45}
+fieldset{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px 16px 16px;margin:0;display:flex;flex-direction:column;gap:10px}
+legend{font-family:var(--head);font-weight:800;font-size:13px;letter-spacing:.7px;text-transform:uppercase;padding:0 6px;color:var(--muted)}
+.group-title{font-family:var(--head);font-weight:800;font-size:15px;margin:6px 2px 0;color:var(--ink)}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.opt{all:unset;box-sizing:border-box;cursor:pointer;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-height:44px;font-size:14px;font-weight:600;color:var(--ink);background:#FFF}
+.opt:hover{border-color:#BFB3A3}
+.opt:focus-visible,.tab:focus-visible,.dev:focus-visible,textarea:focus-visible{outline:3px solid #7FA6D9;outline-offset:2px}
+.opt[aria-pressed="true"]{border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel)}
+.sw{display:flex;gap:5px}
+.sw span{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.08)}
+.fontname{font-size:19px;font-weight:700;line-height:1.1}
+.sub{font-size:12px;color:var(--muted);font-weight:600}
+textarea{font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:80px;resize:vertical;color:var(--ink);background:#FFF}
+.picks{background:var(--ink);color:#FBF8F2;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.picks p{margin:0;font-size:14px;line-height:1.5;user-select:all;white-space:pre-line}
+.copy{all:unset;cursor:pointer;align-self:flex-start;background:var(--hi);color:#2A2420;font-weight:700;font-size:14px;padding:10px 16px;border-radius:10px}
+.copy:focus-visible{outline:3px solid #FBF8F2;outline-offset:2px}
+.devbar{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.devbar .lab{font-family:var(--head);font-weight:800;font-size:13px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+.devs{display:flex;flex-wrap:wrap;gap:6px}
+.dev{all:unset;cursor:pointer;padding:9px 14px;border-radius:999px;font-weight:700;font-size:14px;border:1.5px solid var(--line);background:#FFF;display:flex;align-items:center;gap:8px;min-height:24px}
+.dev[aria-pressed="true"]{background:var(--ink);color:#FFF;border-color:var(--ink)}
+.dev svg{flex-shrink:0}
+.detect{font-size:13px;color:var(--muted);flex:1 1 220px;min-width:0;line-height:1.4}
+.detect b{color:var(--ink)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{all:unset;cursor:pointer;padding:10px 18px;border-radius:999px;font-family:var(--head);font-weight:700;font-size:16px;background:#FFF;border:1.5px solid var(--line);min-height:24px}
+.tab[aria-selected="true"]{background:var(--ink);color:#FFF;border-color:var(--ink)}
+.frame{width:100%;max-width:100%;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(60,40,20,.14);background:#fff;position:relative}
+#screen{transform-origin:0 0;position:absolute;top:0;left:0}
+.hint{font-size:13px;color:var(--muted);margin:0;line-height:1.45}
+@media (max-width:700px){.opts{grid-template-columns:minmax(0,1fr)}.stage{position:static}}
+@media (prefers-reduced-motion:no-preference){#screen *{transition:background-color .2s, border-color .2s, box-shadow .2s, color .2s}}
+</style>
+
+<div class="wrap">
+  <section class="controls" aria-label="Style controls">
+    <div>
+      <h1>DeckVoid style picker</h1>
+      <p class="lede">Your current picks are selected. Pick a device or leave it on Auto, switch screens above the preview, then copy your picks and paste them back to me.</p>
+    </div>
+    <h2 class="group-title">Overall look</h2>
+    <fieldset><legend>Background</legend><div class="opts" id="o-bg"></div></fieldset>
+    <fieldset><legend>Accent palette</legend><div class="opts" id="o-pal"></div></fieldset>
+    <fieldset><legend>Font</legend><div class="opts" id="o-font"></div></fieldset>
+    <fieldset><legend>Corners</legend><div class="opts" id="o-radius"></div></fieldset>
+    <fieldset><legend>Text size</legend><div class="opts" id="o-size"></div></fieldset>
+    <fieldset><legend>Controller focus highlight</legend><div class="opts" id="o-ring"></div></fieldset>
+    <h2 class="group-title">Hosts screen</h2>
+    <fieldset><legend>Status style</legend><div class="opts" id="o-status"></div></fieldset>
+    <fieldset><legend>Card picture area</legend><div class="opts" id="o-media"></div></fieldset>
+    <h2 class="group-title">Pair dialog</h2>
+    <fieldset><legend>Background behind dialog</legend><div class="opts" id="o-backdrop"></div></fieldset>
+    <h2 class="group-title">Settings screen</h2>
+    <fieldset><legend>Selected menu item</legend><div class="opts" id="o-navsel"></div></fieldset>
+    <fieldset><legend>Settings rows</legend><div class="opts" id="o-rows"></div></fieldset>
+    <h2 class="group-title">Mac and iPad</h2>
+    <fieldset><legend>Mac: how card actions appear</legend><div class="opts" id="o-macact"></div></fieldset>
+    <fieldset><legend>iPad: how card actions appear</legend><div class="opts" id="o-padact"></div></fieldset>
+    <fieldset><legend>iPad: entering the PIN</legend><div class="opts" id="o-padpin"></div></fieldset>
+    <fieldset><legend>Anything else?</legend><label for="notes" class="sub">Notes get added to your copied picks</label><textarea id="notes" placeholder="e.g. make the Pair button bigger"></textarea></fieldset>
+    <div class="picks">
+      <p id="summary"></p>
+      <button class="copy" id="copy" type="button">Copy my picks</button>
+    </div>
+  </section>
+
+  <section class="stage" aria-label="Live preview">
+    <div class="devbar">
+      <span class="lab">Device</span>
+      <div class="devs" role="group" aria-label="Device">
+        <button class="dev" type="button" id="dev-auto" data-d="auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path><circle cx="12" cy="12" r="5"></circle></svg>Auto</button>
+        <button class="dev" type="button" id="dev-controller" data-d="controller"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 6h10a5 5 0 0 1 4.9 6l-.8 4a3 3 0 0 1-5.2 1.3L14 15h-4l-1.9 2.3A3 3 0 0 1 2.9 16l-.8-4A5 5 0 0 1 7 6z"></path></svg>Steam Deck / controller</button>
+        <button class="dev" type="button" id="dev-mac" data-d="mac"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"></rect><path d="M1 20h22"></path></svg>Mac</button>
+        <button class="dev" type="button" id="dev-ipad" data-d="ipad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path></svg>iPad</button>
+      </div>
+      <span class="detect" id="detect" aria-live="polite"></span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Screens">
+      <button class="tab" role="tab" id="tab-hosts" data-s="hosts">Hosts</button>
+      <button class="tab" role="tab" id="tab-pair" data-s="pair">Pair with PIN</button>
+      <button class="tab" role="tab" id="tab-settings" data-s="settings">Settings</button>
+    </div>
+    <div class="frame" id="frame"><div id="screen"></div></div>
+    <p class="hint" id="devhint"></p>
+  </section>
+</div>
+
+<script>
+const OPTS = {
+  bg: [
+    {id:'pure', name:'Pure white', g:'#FFFFFF', card:'#FFFFFF', foot:'#FAF8F5', line:'#EEEAE4'},
+    {id:'white', name:'Almost white', g:'#FFFEFB', card:'#FFFFFF', foot:'#FBF8F2', line:'#F0EAE0'},
+    {id:'soft', name:'Soft cream', g:'#FDFBF6', card:'#FFFFFF', foot:'#F7F2E8', line:'#EFE8DB'},
+    {id:'warm', name:'Warm parchment', g:'#FAF3E6', card:'#FFFDF8', foot:'#F3EADA', line:'#EADFCB'}
+  ],
+  pal: [
+    {id:'mango', name:'Mango & orchid', p:'#F7B267', s:'#D7A6D9', ok:'#9FD3A8', tint:'#FEF0DE', icon:'#B36A1C'},
+    {id:'honey', name:'Honey & lavender', p:'#F2C779', s:'#C9A8D8', ok:'#B5D095', tint:'#FDF3DF', icon:'#B07A22'},
+    {id:'peach', name:'Peach & lilac', p:'#F6B48F', s:'#C7B3E5', ok:'#A9D8B8', tint:'#FEEDE3', icon:'#B4673D'},
+    {id:'apricot', name:'Apricot & rose', p:'#F5BE8A', s:'#E8A9BC', ok:'#BCD6A0', tint:'#FDEFE0', icon:'#B06E2E'},
+    {id:'butter', name:'Butter & sky', p:'#F3D67E', s:'#A9C8E8', ok:'#B2D9A6', tint:'#FDF7DD', icon:'#A2801E'},
+    {id:'tang', name:'Tangerine & orchid, brighter', p:'#F59E4C', s:'#CF8FD2', ok:'#86C894', tint:'#FEEAD6', icon:'#A85A12'}
+  ],
+  font: [
+    {id:'uq', name:'Urbanist + Quicksand', sub:'headings + body', h:"'Urbanist'", b:"'Quicksand'"},
+    {id:'qu', name:'Quicksand + Urbanist', sub:'headings + body', h:"'Quicksand'", b:"'Urbanist'"},
+    {id:'u', name:'Urbanist', sub:'everywhere', h:"'Urbanist'", b:"'Urbanist'"},
+    {id:'q', name:'Quicksand', sub:'everywhere', h:"'Quicksand'", b:"'Quicksand'"},
+    {id:'n', name:'Nunito', sub:'for comparison', h:"'Nunito'", b:"'Nunito'"},
+    {id:'d', name:'DM Sans', sub:'for comparison', h:"'DM Sans'", b:"'DM Sans'"}
+  ],
+  radius: [
+    {id:'26', name:'Rounder (current)', r:26},
+    {id:'18', name:'Soft', r:18},
+    {id:'12', name:'Tighter', r:12},
+    {id:'34', name:'Very round', r:34}
+  ],
+  size: [
+    {id:'1', name:'Standard (current)', k:1},
+    {id:'1.1', name:'A bit larger', k:1.1},
+    {id:'1.2', name:'Larger', k:1.2},
+    {id:'0.94', name:'A bit smaller', k:0.94}
+  ],
+  ring: [
+    {id:'liftglow', name:'Lift + shadow + thin glow (current)'},
+    {id:'lift', name:'Lift + shadow only'},
+    {id:'glow', name:'Thin line + glow'},
+    {id:'liftbig', name:'Bigger lift + warm glow'}
+  ],
+  status: [
+    {id:'both', name:'Edge + dot (current)'},
+    {id:'edge', name:'Colour edge only'},
+    {id:'dot', name:'Dot only'},
+    {id:'tint', name:'Tinted card top'}
+  ],
+  media: [
+    {id:'icon', name:'Monitor icon (current)'},
+    {id:'initial', name:'Big initial letter'},
+    {id:'art', name:'Game art placeholder'},
+    {id:'none', name:'No picture area'}
+  ],
+  backdrop: [
+    {id:'warm', name:'Warm dim (current)'},
+    {id:'light', name:'Light frosted'},
+    {id:'dark', name:'Dark dim'},
+    {id:'tint', name:'Accent tint'}
+  ],
+  navsel: [
+    {id:'orchid', name:'Secondary tint fill (current)'},
+    {id:'tint', name:'Accent tint fill'},
+    {id:'outline', name:'Outline pill'},
+    {id:'lift', name:'Lifted white card'}
+  ],
+  rows: [
+    {id:'grouped', name:'One grouped card (current)'},
+    {id:'outlined', name:'Outlined rows'},
+    {id:'filled', name:'Soft filled rows'},
+    {id:'divided', name:'Plain list with dividers'}
+  ],
+  macact: [
+    {id:'hover', name:'Buttons appear on hover'},
+    {id:'always', name:'Buttons always visible'},
+    {id:'toolbar', name:'Actions in the toolbar for the selected PC'}
+  ],
+  padact: [
+    {id:'button', name:'One big button on each card'},
+    {id:'tap', name:'Tap card, actions in a sheet'},
+    {id:'row', name:'Button row under each card'}
+  ],
+  padpin: [
+    {id:'keypad', name:'Big on-screen number pad'},
+    {id:'keyboard', name:'System number keyboard'}
+  ]
+};
+const DEFAULTS = {bg:'pure', pal:'mango', font:'uq', radius:'26', size:'1', ring:'liftglow', status:'both', media:'icon', backdrop:'warm', navsel:'orchid', rows:'grouped', macact:'hover', padact:'button', padpin:'keypad'};
+const DEVICES = {
+  controller:{name:'Steam Deck / controller', w:1280, h:800, k:1, hint:'Steam Deck OLED, 1280×800. Moving with the D-pad or sticks lifts the focused card. Button hints sit in the footer.'},
+  mac:{name:'Mac', w:1440, h:900, k:0.86, hint:'Mac window, 1440×900. Mouse and keyboard: hover lifts a card and shows its actions, shortcuts show next to buttons, no controller footer.'},
+  ipad:{name:'iPad', w:1180, h:820, k:0.96, hint:'iPad Air in landscape, 1180×820. Touch: every action is a big visible button (44px or more), nothing depends on hover or a focus highlight.'}
+};
+const state = Object.assign({}, DEFAULTS);
+let screen = 'hosts', devMode = 'auto', detected = 'mac', reason = '';
+try { const saved = JSON.parse(localStorage.getItem('dv-picks-4')||'null'); if (saved) Object.assign(state, saved); } catch(e) {}
+try { const sc = localStorage.getItem('dv-screen'); if (sc) screen = sc; const dm = localStorage.getItem('dv-dev'); if (dm) devMode = dm; } catch(e) {}
+
+const get = k => OPTS[k].find(o => o.id === state[k]) || OPTS[k][0];
+function rgba(hex, a){const n=parseInt(hex.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;}
+
+/* ---------- device detection: first guess, then follow the last input used ---------- */
+function firstGuess(){
+  const ua = navigator.userAgent || '';
+  try { const gp = navigator.getGamepads ? navigator.getGamepads() : []; if (gp && Array.from(gp).some(Boolean)) return ['controller','a controller is connected']; } catch(e) {}
+  if (/Steam Deck|SteamOS|Valve Steam/i.test(ua)) return ['controller','this looks like a Steam Deck'];
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return ['ipad','this looks like an iPad'];
+  if (window.matchMedia && matchMedia('(pointer: coarse)').matches) return ['ipad','this screen is touch-first'];
+  return ['mac','this has a mouse or trackpad'];
+}
+function setDetected(d, why){
+  if (d === detected && why === reason) return;
+  detected = d; reason = why;
+  if (devMode === 'auto') render(); else updateDetect();
+}
+window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' || e.pointerType === 'pen') setDetected('ipad','you last touched the screen'); else if (e.pointerType === 'mouse') setDetected('mac','you last used the mouse'); }, true);
+let lastMove = 0;
+window.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const n = Date.now(); if (n - lastMove < 400) return; lastMove = n; setDetected('mac','you last used the mouse'); }, true);
+window.addEventListener('keydown', e => { if (e.target && e.target.id === 'notes') return; setDetected('mac','you last used the keyboard'); }, true);
+let polling = false;
+function pollPads(){
+  let pads = [];
+  try { pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : []; } catch(e) { polling = false; return; }
+  if (!pads.length) { polling = false; return; }
+  const used = pads.some(p => p.buttons.some(b => b.pressed) || p.axes.some(a => Math.abs(a) > 0.5));
+  if (used) setDetected('controller','you last used a controller');
+  requestAnimationFrame(pollPads);
+}
+window.addEventListener('gamepadconnected', () => { setDetected('controller','a controller just connected'); if (!polling) { polling = true; requestAnimationFrame(pollPads); } });
+const dev = () => devMode === 'auto' ? detected : devMode;
+
+/* ---------- controls ---------- */
+function optInner(k, o){
+  if (k==='bg') return `<span class="sw"><span style="background:${o.g}"></span><span style="background:${o.foot}"></span></span>${o.name}`;
+  if (k==='pal') return `<span class="sw"><span style="background:${o.p}"></span><span style="background:${o.s}"></span><span style="background:${o.ok}"></span></span>${o.name}`;
+  if (k==='font') return `<span class="fontname" style="font-family:${o.h}, sans-serif">Your PCs</span><span style="font-family:${o.b}, sans-serif">${o.name}</span><span class="sub">${o.sub}</span>`;
+  if (k==='radius') return `<span style="width:40px;height:26px;border:2px solid #2A2420;border-radius:${Math.round(o.r/2.2)}px"></span>${o.name}`;
+  return o.name;
+}
+const SCREEN_FOR = {status:'hosts', media:'hosts', backdrop:'pair', navsel:'settings', rows:'settings', macact:'hosts', padact:'hosts', padpin:'pair', ring:'hosts'};
+const DEV_FOR = {macact:'mac', padact:'ipad', padpin:'ipad', ring:'controller'};
+function buildControls(){
+  Object.keys(OPTS).forEach(k => {
+    const box = document.getElementById('o-'+k);
+    box.innerHTML = OPTS[k].map(o => `<button type="button" class="opt" id="opt-${k}-${o.id}" data-k="${k}" data-id="${o.id}" aria-pressed="${state[k]===o.id}">${optInner(k,o)}</button>`).join('');
+  });
+  document.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.k;
+    state[k] = b.dataset.id;
+    try { localStorage.setItem('dv-picks-4', JSON.stringify(state)); } catch(e) {}
+    document.querySelectorAll(`.opt[data-k="${k}"]`).forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (DEV_FOR[k] && dev() !== DEV_FOR[k]) setDev(DEV_FOR[k], true);
+    if (SCREEN_FOR[k]) setScreen(SCREEN_FOR[k]); else render();
+  }));
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setScreen(t.dataset.s)));
+  document.querySelectorAll('.dev').forEach(b => b.addEventListener('click', () => setDev(b.dataset.d)));
+  document.getElementById('notes').addEventListener('input', summarize);
+}
+function setScreen(s){
+  screen = s;
+  try { localStorage.setItem('dv-screen', s); } catch(e) {}
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.s === s));
+  render();
+}
+function setDev(d, quiet){
+  devMode = d;
+  try { localStorage.setItem('dv-dev', d); } catch(e) {}
+  if (!quiet) render();
+}
+function updateDetect(){
+  document.querySelectorAll('.dev').forEach(b => b.setAttribute('aria-pressed', b.dataset.d === devMode));
+  const D = DEVICES[dev()];
+  document.getElementById('detect').innerHTML = devMode === 'auto'
+    ? `Showing <b>${DEVICES[detected].name}</b> because ${reason}. Plug in a controller, touch, or move the mouse and it switches.`
+    : `Locked to <b>${D.name}</b>. Pick Auto to follow your last input.`;
+  document.getElementById('devhint').textContent = D.hint;
+}
+
+/* ---------- shared pieces ---------- */
+function T(){
+  const d = dev(), D = DEVICES[d];
+  const bg=get('bg'), p=get('pal'), f=get('font'), R=get('radius').r, K=get('size').k * D.k;
+  return {d,D,W:D.w,Hh:D.h,bg,p,R,K,H:f.h+', system-ui, sans-serif',B:f.b+', system-ui, sans-serif',fs:n=>Math.round(n*K)+'px',px:n=>Math.round(n*K)};
+}
+function focusStyle(t){
+  const p=t.p;
+  return {
+    liftglow:`transform:scale(1.06) translateY(-6px);box-shadow:0 18px 40px rgba(90,60,30,.22),0 0 0 4px ${rgba(p.p,.22)};border:1px solid transparent;`,
+    lift:`transform:scale(1.06) translateY(-6px);box-shadow:0 18px 40px rgba(90,60,30,.22);border:1px solid transparent;`,
+    glow:`transform:scale(1.03);outline:2px solid ${p.p};outline-offset:4px;box-shadow:0 0 0 10px ${rgba(p.p,.22)};border:1px solid transparent;`,
+    liftbig:`transform:scale(1.08) translateY(-10px);box-shadow:0 26px 50px rgba(90,60,30,.26),0 0 24px 6px ${rgba(p.p,.35)};border:1px solid transparent;`
+  }[state.ring];
+}
+function smallFocus(t){
+  const p=t.p;
+  if (t.d === 'mac') return `box-shadow:0 0 0 3px ${rgba(p.p,.55)};border-color:${p.p};`;
+  if (t.d === 'ipad') return `border-color:${p.p};box-shadow:0 0 0 3px ${rgba(p.p,.3)};`;
+  return {
+    liftglow:`transform:translateY(-3px);box-shadow:0 12px 26px rgba(90,60,30,.18),0 0 0 4px ${rgba(p.p,.24)};border-color:transparent;`,
+    lift:`transform:translateY(-3px);box-shadow:0 12px 26px rgba(90,60,30,.2);border-color:transparent;`,
+    glow:`outline:2px solid ${p.p};outline-offset:3px;box-shadow:0 0 0 8px ${rgba(p.p,.2)};`,
+    liftbig:`transform:translateY(-5px);box-shadow:0 18px 34px rgba(90,60,30,.22),0 0 18px 4px ${rgba(p.p,.35)};border-color:transparent;`
+  }[state.ring];
+}
+const hoverStyle = t => `transform:translateY(-4px);box-shadow:0 14px 32px rgba(90,60,30,.18),0 0 0 3px ${rgba(t.p.p,.18)};border:1px solid transparent;`;
+const cursor = (x, y) => `<svg style="position:absolute;left:${x}px;top:${y}px;z-index:5;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))" width="22" height="30" viewBox="0 0 22 30" aria-hidden="true"><path d="M2 2v22l6-5.5 4 9 4-1.8-4-8.7h8z" fill="#111" stroke="#FFF" stroke-width="1.6" stroke-linejoin="round"></path></svg>`;
+const logo = t => `<svg width="${t.px(30)}" height="${t.px(30)}" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="12" fill="none" stroke="${t.p.p}" stroke-width="3"></circle><circle cx="15" cy="15" r="4.5" fill="${t.p.s}"></circle></svg>`;
+const kbd = (t, k, dark) => `<span style="font-family:${t.B};font-size:${t.fs(13)};font-weight:700;padding:2px 7px;border-radius:6px;background:${dark?'rgba(42,36,32,.12)':'#F1EADD'};color:${dark?'#2A2420':'#5A4E45'}">${k}</span>`;
+const searchIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
+const plusIcon = (c,s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>`;
+
+function header(t, active){
+  const p=t.p;
+  if (t.d === 'mac') {
+    const seg = (name,on) => `<span style="font-family:${t.H};font-size:${t.fs(17)};font-weight:700;padding:7px 18px;border-radius:9px;${on?'background:#FFF;box-shadow:0 1px 3px rgba(0,0,0,.12);color:#2A2420':'color:#6B5F55'}">${name}</span>`;
+    const right = active==='hosts'
+      ? `<span style="display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:9px;background:#F3EFE8;color:#6B5F55;font-size:${t.fs(15)};width:210px;box-sizing:border-box">${searchIcon}Search PCs</span>
+         <span style="display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:9px;background:${p.p};font-weight:700;font-size:${t.fs(15)}">${plusIcon('#2A2420',16)}Add PC ${kbd(t,'⌘N',1)}</span>`
+      : '';
+    return `<header style="height:62px;flex-shrink:0;padding:0 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${t.bg.line};background:${t.bg.foot}">
+      <div style="display:flex;align-items:center;gap:22px;width:360px">
+        <span style="display:flex;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57"></span><span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E"></span><span style="width:12px;height:12px;border-radius:50%;background:#28C840"></span></span>
+        <span style="display:flex;align-items:center;gap:10px">${logo(t)}<span style="font-family:${t.H};font-size:${t.fs(22)};font-weight:800">DeckVoid</span></span>
+      </div>
+      <div style="display:flex;padding:3px;border-radius:11px;background:#EEE8DF">${seg('Hosts',active==='hosts')}${seg('Settings',active==='settings')}</div>
+      <div style="width:360px;display:flex;justify-content:flex-end;gap:10px">${right}</div></header>`;
+  }
+  if (t.d === 'ipad') {
+    const seg = (name,on) => `<span style="font-family:${t.H};font-size:${t.fs(19)};font-weight:700;height:44px;display:flex;align-items:center;padding:0 26px;border-radius:12px;${on?'background:#FFF;box-shadow:0 1px 4px rgba(0,0,0,.12);color:#2A2420':'color:#6B5F55'}">${name}</span>`;
+    const right = active==='hosts' ? `<span style="width:48px;height:48px;border-radius:50%;background:${p.p};display:flex;align-items:center;justify-content:center">${plusIcon('#2A2420',24)}</span>` : '';
+    return `<header style="height:84px;flex-shrink:0;padding:0 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${t.bg.line}">
+      <div style="display:flex;align-items:center;gap:12px;width:240px">${logo(t)}<span style="font-family:${t.H};font-size:${t.fs(25)};font-weight:800">DeckVoid</span></div>
+      <div style="display:flex;padding:4px;border-radius:15px;background:#EEE8DF">${seg('Hosts',active==='hosts')}${seg('Settings',active==='settings')}</div>
+      <div style="width:240px;display:flex;justify-content:flex-end">${right}</div></header>`;
+  }
+  const tab=(name,on)=>`<span style="font-family:${t.H};font-size:${t.fs(21)};font-weight:${on?700:600};color:${on?'#2A2420':'#6B5F55'};padding:10px 22px;border-bottom:3px solid ${on?p.s:'transparent'}">${name}</span>`;
+  const bump=l=>`<span style="font-size:13px;font-weight:700;color:#4A3F37;background:#F1EADD;border-radius:6px;padding:3px 8px">${l}</span>`;
+  return `<header style="height:76px;flex-shrink:0;padding:0 40px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${t.bg.line}">
+    <div style="display:flex;align-items:center;gap:12px;width:260px">${logo(t)}<span style="font-family:${t.H};font-size:${t.fs(25)};font-weight:800">DeckVoid</span></div>
+    <div style="display:flex;align-items:center;gap:8px">${bump('L1')}${tab('Hosts',active==='hosts')}${tab('Settings',active==='settings')}${bump('R1')}</div>
+    <div style="width:260px;text-align:right;color:#6B5F55;font-size:16px">${active==='hosts'?'Wi-Fi · 5 GHz':''}</div></header>`;
+}
+const glyph = (l, sq) => `<span style="display:flex;align-items:center;gap:10px"><span style="min-width:28px;height:28px;padding:0 ${l.length>1?8:0}px;border-radius:${sq||l.length>1?'6px':'50%'};background:#2A2420;color:#FFF;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center">${l}</span>`;
+function footer(t, items, abs){
+  if (t.d !== 'controller') return '';
+  return `<footer style="${abs?'position:absolute;left:0;right:0;bottom:0;':''}height:64px;flex-shrink:0;padding:0 40px;display:flex;align-items:center;justify-content:flex-end;gap:28px;background:${t.bg.foot};border-top:1px solid ${t.bg.line};font-size:${t.fs(17)};font-weight:600;color:#3E352F">
+    ${items.map(([g,l,sq])=>`${glyph(g,sq)}${l}</span>`).join('')}</footer>`;
+}
+const label = (t, text) => `<span style="display:flex;align-items:center;gap:8px;font-size:${t.fs(14)};color:#6B5F55;font-weight:700;letter-spacing:.6px"><span style="width:8px;height:8px;border-radius:2px;background:${t.p.s}"></span>${text}</span>`;
+const monitor = (c, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="1.5"></rect><path d="M8.5 20h7"></path><path d="M12 16.5V20"></path></svg>`;
+const btnS = (t, label, kind, h, extra) => {
+  const p=t.p, bg = kind==='primary' ? p.p : kind==='ghost' ? 'transparent' : '#F3EFE8';
+  const bd = kind==='ghost' ? `border:1.5px solid #E2D9CC;` : 'border:1.5px solid transparent;';
+  return `<span style="height:${h}px;box-sizing:border-box;padding:0 ${Math.round(h*0.42)}px;border-radius:${Math.min(t.R-6,h/2)}px;background:${bg};${bd}display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:${t.fs(h>=48?17:15)};color:#2A2420;${extra||''}">${label}</span>`;
+};
+
+/* ---------- Hosts ---------- */
+function hosts(t){
+  const p=t.p, st=state.status, md=state.media, d=t.d;
+  const cards=[
+    {name:'Gaming PC',status:'Streaming ready',meta:'Paired · Vibepollo · Steam Big Picture',col:p.ok,focus:true,icon:p.icon,mediaBg:p.tint,art:['#F7B267','#D7A6D9'],act:'Stream',key:'⏎'},
+    {name:'Living Room PC',status:'Needs pairing',meta:'Online · Apollo · '+(d==='controller'?'Press X to pair':d==='mac'?'Click to pair with a PIN':'Tap Pair to use a PIN'),col:p.p,icon:'#6B5F55',mediaBg:'#F8F4EC',art:['#E9DFD0','#F3EDE4'],act:'Pair',key:'⌘P'},
+    {name:'Office Laptop',status:'Asleep',meta:'Paired · Sunshine · '+(d==='controller'?'Press Y to wake':d==='mac'?'Click Wake to start it':'Tap Wake to start it'),col:'#DDD3C3',icon:'#A89C90',mediaBg:'#F6F3EE',dim:true,art:['#EEE9E2','#F6F3EE'],act:'Wake',key:'⌘W'}
+  ];
+  const showActs = c => (d==='mac' && ((state.macact==='hover' && c.focus) || state.macact==='always')) || (d==='ipad' && state.padact!=='tap');
+  const cardH = d==='ipad' ? (state.padact==='row' ? 330 : 318) : d==='mac' ? 262 : 270;
+  const card=c=>{
+    const edge=(st==='edge'||st==='both')?`<span style="height:7px;flex-shrink:0;background:${c.col}"></span>`:'';
+    const dot=(st==='dot'||st==='both')?`<span style="width:11px;height:11px;border-radius:50%;background:${c.col};flex-shrink:0"></span>`:'';
+    const mbg=st==='tint'?rgba(c.col,.45):c.mediaBg;
+    const mh = d==='ipad' ? 104 : d==='mac' ? 104 : (edge?118:125);
+    let media='';
+    if(md==='icon') media=`<div style="height:${mh}px;flex-shrink:0;background:${mbg};display:flex;align-items:center;justify-content:center">${monitor(c.icon,c.focus&&d==='controller'?62:52)}</div>`;
+    if(md==='initial') media=`<div style="height:${mh}px;flex-shrink:0;background:${mbg};display:flex;align-items:center;justify-content:center;font-family:${t.H};font-size:60px;font-weight:800;color:${c.icon}">${c.name[0]}</div>`;
+    if(md==='art') media=`<div style="height:${mh}px;flex-shrink:0;background:linear-gradient(135deg, ${c.art[0]}, ${c.art[1]});display:flex;align-items:flex-end;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:700;color:${c.focus?'#2A2420':'#6B5F55'}">${c.focus?'Last played: [GAME NAME]':''}</div>`;
+    let frame = `border:1px solid ${t.bg.line};`;
+    if (c.focus && d==='controller') frame = focusStyle(t);
+    if (c.focus && d==='mac' && state.macact!=='toolbar') frame = hoverStyle(t);
+    if (c.focus && d==='mac' && state.macact==='toolbar') frame = `border:2px solid ${p.p};box-shadow:0 0 0 3px ${rgba(p.p,.2)};`;
+    let acts='';
+    if (showActs(c)) {
+      if (d==='mac') acts = `<div style="display:flex;gap:8px;margin-top:auto;padding:0 16px 14px">${btnS(t,`${c.act} ${kbd(t,c.key,1)}`,'primary',36,'flex:1')}${btnS(t,'•••','ghost',36)}</div>`;
+      if (d==='ipad' && state.padact==='button') acts = `<div style="margin-top:auto;padding:0 16px 16px">${btnS(t,c.act, c.focus?'primary':'ghost', 48,'width:100%')}</div>`;
+      if (d==='ipad' && state.padact==='row') acts = `<div style="margin-top:auto;padding:0 16px 16px;display:flex;gap:8px">${btnS(t,c.act, c.focus?'primary':'ghost', 48,'flex:1')}${btnS(t,'Details','ghost',48)}${btnS(t,'•••','ghost',48)}</div>`;
+    }
+    return `<div style="box-sizing:border-box;height:${cardH}px;border-radius:${t.R}px;background:${t.bg.card};display:flex;flex-direction:column;overflow:hidden;position:relative;${frame}">
+      ${edge}${md==='none'?'':media}
+      <div style="padding:${md==='none'?20:12}px 18px ${acts?8:12}px;display:flex;flex-direction:column;gap:5px">
+        <span style="font-family:${t.H};font-size:${t.fs(md==='none'?28:23)};font-weight:800;color:${c.dim?'#5A4E45':'#2A2420'}">${c.name}</span>
+        <span style="display:flex;align-items:center;gap:8px;font-size:${t.fs(15)};font-weight:700;color:#3E352F">${dot}${c.status}</span>
+        <span style="font-size:${t.fs(15)};color:#6B5F55">${c.meta}</span>
+      </div>${acts}</div>`;
+  };
+  const pad = d==='mac' ? '26px 32px 0' : d==='ipad' ? '24px 32px 0' : '30px 40px 0';
+  const sub = d==='controller' ? '3 PCs · 2 online on this network' : d==='mac' ? '3 PCs · 2 online on this network · Wi-Fi 5 GHz' : '3 PCs · 2 online · pull down to refresh';
+  const sheet = (d==='ipad' && state.padact==='tap') ? `<div style="position:absolute;inset:0;background:rgba(60,45,30,.3)"></div>
+    <div style="position:absolute;left:50%;bottom:24px;width:520px;margin-left:-260px;background:#FFF;border-radius:${t.R+4}px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px">
+      <span style="font-family:${t.H};font-size:${t.fs(24)};font-weight:800">Gaming PC</span>
+      <span style="font-size:${t.fs(15)};color:#6B5F55">Streaming ready · Vibepollo</span>
+      ${btnS(t,'Stream','primary',52,'width:100%')}${btnS(t,'Open apps','ghost',52,'width:100%')}${btnS(t,'Cancel','soft',52,'width:100%')}
+    </div>` : '';
+  const toolbarActs = (d==='mac' && state.macact==='toolbar') ? `<div style="display:flex;gap:8px;align-items:center"><span style="font-size:${t.fs(14)};color:#6B5F55;margin-right:4px">Gaming PC selected</span>${btnS(t,`Stream ${kbd(t,'⏎',1)}`,'primary',34)}${btnS(t,'Open apps','ghost',34)}${btnS(t,'•••','ghost',34)}</div>` : '';
+  const showCursor = d==='mac' && state.macact!=='toolbar';
+  return `<div style="width:${t.W}px;height:${t.Hh}px;box-sizing:border-box;background:${t.bg.g};color:#2A2420;font-family:${t.B};font-weight:500;display:flex;flex-direction:column;position:relative;overflow:hidden">
+    ${header(t,'hosts')}
+    <main style="flex:1;padding:${pad};display:flex;flex-direction:column;gap:${d==='mac'?18:22}px;position:relative">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">
+        <span style="font-family:${t.H};font-size:${t.fs(34)};font-weight:800">Your PCs</span>
+        ${toolbarActs || `<span style="color:#6B5F55;font-size:${t.fs(17)}">${sub}</span>`}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:${d==='mac'?18:20}px;position:relative">
+        ${cards.map(card).join('')}
+        <div style="box-sizing:border-box;height:${cardH}px;border-radius:${t.R}px;border:2px dashed #E2D6C2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#3E352F">
+          ${plusIcon(p.icon,44)}
+          <span style="font-family:${t.H};font-size:${t.fs(21)};font-weight:700">Add a PC</span>
+          <span style="font-size:${t.fs(15)};color:#6B5F55">By IP address or QR link</span>
+        </div>
+        ${showCursor ? cursor(Math.round((t.W-64)/4*0.62), Math.round(cardH*0.55)) : ''}
+      </div>
+      <div style="background:${t.bg.card};border:1px solid ${t.bg.line};border-radius:${t.R}px;padding:20px 24px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px">
+        ${[['ADDRESS','192.168.1.20'],['VIRTUAL DISPLAY','Ready · 1280×800 at 90 Hz'],['ALLOWED ON THIS DEVICE','Launch · Clipboard · Commands'],['LAST STREAM','90 fps · HEVC 10-bit · 28 Mbps']].map(([a,b])=>`<div style="display:flex;flex-direction:column;gap:6px">${label(t,a)}<span style="font-size:${t.fs(18)};font-weight:600">${b}</span></div>`).join('')}
+      </div>
+    </main>
+    ${footer(t,[['A','Open apps'],['X','Pair with PIN'],['Y','Wake'],['≡','Options',1],['B','Quit']])}
+    ${sheet}
+  </div>`;
+}
+
+/* ---------- Pair ---------- */
+function pair(t){
+  const p=t.p, d=t.d, r=Math.max(10,t.R-4);
+  const scrim={warm:'rgba(60,45,30,.38)',light:'rgba(255,255,255,.62)',dark:'rgba(20,15,10,.6)',tint:rgba(p.p,.32)}[state.backdrop];
+  const blur=state.backdrop==='light'?'backdrop-filter:blur(6px);':'';
+  const inp=`box-sizing:border-box;border-radius:${r}px;border:1.5px solid #E6DFD4;background:#FFF;color:#2A2420;`;
+  const dw = d==='ipad' ? 64 : d==='mac' ? 62 : 76, dh = d==='ipad' ? 76 : d==='mac' ? 70 : 88;
+  const digit=(v,f)=>`<span style="${inp}width:${dw}px;height:${dh}px;display:flex;align-items:center;justify-content:center;font-family:${t.H};font-size:${d==='controller'?40:34}px;font-weight:800;${f?smallFocus(t):''}">${v}</span>`;
+  const field=(h, content, f)=>`<span style="${inp}height:${h}px;display:flex;align-items:center;padding:0 16px;font-size:${t.fs(20)};${f?smallFocus(t):''}">${content}</span>`;
+  const fh = d==='ipad' ? 56 : d==='mac' ? 44 : 56;
+  const eye = `<span style="${inp}width:${fh}px;height:${fh}px;display:flex;align-items:center;justify-content:center;color:#5A4E45;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>`;
+  const btnH = d==='ipad' ? 56 : d==='mac' ? 40 : 52;
+  const cancel = d==='mac' ? `Cancel ${kbd(t,'esc')}` : 'Cancel';
+  const ok = d==='mac' ? `Pair ${kbd(t,'⏎',1)}` : 'Pair';
+  const keypadOn = d==='ipad' && state.padpin==='keypad';
+  const keypad = keypadOn ? `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-content:start">
+      ${['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k?`<span style="height:72px;border-radius:${r}px;background:${k==='⌫'?'#F3EFE8':'#FAF8F5'};border:1px solid #EEE8DF;display:flex;align-items:center;justify-content:center;font-family:${t.H};font-size:30px;font-weight:700">${k}</span>`:'<span></span>').join('')}
+    </div>` : '';
+  const width = keypadOn ? 960 : d==='mac' ? 560 : 660;
+  const top = d==='mac' ? 62 : d==='ipad' ? 60 : 56;
+  const radiusTop = d==='mac' ? `border-radius:0 0 ${t.R}px ${t.R}px;` : `border-radius:${t.R+4}px;`;
+  const form = `<div style="display:flex;flex-direction:column;gap:${d==='mac'?16:20}px;min-width:0;flex:1">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-family:${t.H};font-size:${t.fs(30)};font-weight:800">Pair with Living Room PC</span>
+        <span style="font-size:${t.fs(17)};line-height:1.5;color:#5A4E45">On the PC, open Apollo's web page, choose <b style="color:#2A2420">Pair a device with a PIN</b>, and enter a passphrase. Type the PIN and passphrase it shows you here. They expire after 3 minutes.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">${label(t,'PIN')}<div style="display:flex;gap:12px">${digit('4')}${digit('7')}${digit('1')}${digit('',1)}</div></div>
+      <div style="display:flex;flex-direction:column;gap:10px">${label(t,'PASSPHRASE')}<div style="display:flex;gap:10px"><span style="flex:1;min-width:0">${field(fh,'<span style="letter-spacing:3px">••••••••</span>')}</span>${eye}</div></div>
+      <div style="display:flex;flex-direction:column;gap:10px">${label(t,d==='controller'?'NAME SHOWN ON THE PC':'NAME SHOWN ON THE PC')}${field(fh,d==='mac'?"Omar's MacBook Pro":d==='ipad'?"Omar's iPad":"Omar's Steam Deck")}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:4px">
+        <span style="font-size:${t.fs(16)};font-weight:600;text-decoration:underline">Pair the classic way instead</span>
+        <div style="display:flex;gap:10px">${btnS(t,cancel,'soft',btnH)}${btnS(t,ok,'primary',btnH,`padding:0 ${btnH*0.6}px;font-family:${t.H};font-weight:800`)}</div>
+      </div>
+    </div>`;
+  const bgCards = d==='mac' ? '' : `<div style="position:absolute;inset:0;padding:${d==='ipad'?110:106}px ${d==='ipad'?32:40}px 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;align-content:start">
+      ${[p.ok,p.p,'#DDD3C3'].map(c=>`<div style="height:270px;border-radius:${t.R}px;border:1px solid ${t.bg.line};border-top:7px solid ${c};background:${t.bg.card}"></div>`).join('')}
+      <div style="height:270px;border-radius:${t.R}px;border:2px dashed #E2D6C2"></div></div>`;
+  const macBehind = d==='mac' ? `<div style="position:absolute;inset:0;display:flex;flex-direction:column">${header(t,'hosts')}<div style="padding:26px 32px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px">${[p.ok,p.p,'#DDD3C3'].map(c=>`<div style="height:262px;border-radius:${t.R}px;border:1px solid ${t.bg.line};border-top:7px solid ${c};background:${t.bg.card}"></div>`).join('')}</div></div>` : '';
+  return `<div style="width:${t.W}px;height:${t.Hh}px;box-sizing:border-box;background:${t.bg.g};color:#2A2420;font-family:${t.B};font-weight:500;position:relative;overflow:hidden">
+    ${bgCards}${macBehind}
+    <div style="position:absolute;inset:${d==='mac'?62:0}px 0 0 0;background:${scrim};${blur}"></div>
+    <section style="position:absolute;top:${top}px;left:50%;margin-left:-${width/2}px;width:${width}px;box-sizing:border-box;background:#FFF;${radiusTop}padding:${d==='mac'?'26px 30px':'30px 34px'};display:flex;gap:30px;box-shadow:0 24px 60px rgba(60,40,20,.28)">
+      ${form}${keypadOn?`<div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;padding-top:6px">${label(t,'TAP TO ENTER THE PIN')}${keypad}</div>`:''}
+    </section>
+    ${footer(t,[['A','Select'],['X','Show passphrase'],['Y','Pair now'],['B','Cancel']],true)}
+  </div>`;
+}
+
+/* ---------- Settings ---------- */
+function settings(t){
+  const p=t.p, d=t.d, r=Math.max(10,t.R-4), rows=state.rows, ns=state.navsel;
+  const icons={
+    Stream:'<path d="M5 12.5a10 10 0 0 1 14 0"></path><path d="M8.5 16a5 5 0 0 1 7 0"></path><circle cx="12" cy="19.5" r="1" fill="currentColor"></circle><path d="M2 9a15 15 0 0 1 20 0"></path>',
+    'Host display':'<rect x="2.5" y="4" width="19" height="12.5" rx="1.5"></rect><path d="M8.5 20h7"></path>',
+    Controls:'<path d="M6 11h4M8 9v4"></path><circle cx="15.5" cy="10" r="1" fill="currentColor"></circle><path d="M7 6h10a5 5 0 0 1 4.9 6l-.8 4a3 3 0 0 1-5.2 1.3L14 15h-4l-1.9 2.3A3 3 0 0 1 2.9 16l-.8-4A5 5 0 0 1 7 6z"></path>',
+    Haptics:'<path d="M3 12h2M7 8v8M11 5v14M15 8v8M19 11v2"></path>',
+    Overlay:'<path d="M4 19V5"></path><path d="M4 19h16"></path><path d="M8 15l3-4 3 2 5-6"></path>',
+    About:'<circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><circle cx="12" cy="7.5" r="1" fill="currentColor"></circle>'
+  };
+  const selStyle={tint:`background:${p.tint};`,orchid:`background:${rgba(p.s,.28)};`,outline:`border:1.5px solid ${p.p};`,lift:`background:#FFF;box-shadow:0 8px 20px rgba(90,60,30,.14);`}[ns];
+  const navH = d==='mac' ? 38 : 50;
+  const nav=Object.keys(icons).map((n,i)=>`<span style="height:${navH}px;box-sizing:border-box;border-radius:${Math.min(r,navH/2)}px;padding:0 14px;display:flex;align-items:center;gap:12px;font-size:${t.fs(18)};font-weight:${i?600:700};color:${i?'#5A4E45':'#2A2420'};border:1.5px solid transparent;${i?'':selStyle}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${i?'currentColor':p.icon}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[n]}</svg>${n}</span>`).join('');
+  const rowBase={outlined:`background:#FFF;border:1px solid ${t.bg.line};border-radius:${r}px;`,filled:`background:#FAF7F2;border:1px solid transparent;border-radius:${r}px;`,divided:`background:transparent;border-bottom:1px solid ${t.bg.line};border-radius:0;`,grouped:`background:transparent;border-bottom:1px solid ${t.bg.line};border-radius:0;`}[rows];
+  const rowH = d==='mac' ? 52 : d==='ipad' ? 60 : 62;
+  const chev = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A7D70" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>';
+  const updown = '<svg width="12" height="16" viewBox="0 0 12 16" fill="none" stroke="#5A4E45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l3-3 3 3M3 10l3 3 3-3"></path></svg>';
+  const valueCtl = (v,s) => {
+    const text = `${v}${s?` <span style="color:#6B5F55">· ${s}</span>`:''}`;
+    if (d==='mac') return `<span style="display:flex;align-items:center;gap:10px;height:32px;padding:0 10px 0 14px;border-radius:8px;background:#FFF;border:1px solid #E2D9CC;box-shadow:0 1px 2px rgba(0,0,0,.06);font-size:${t.fs(16)}">${text}${updown}</span>`;
+    if (d==='ipad') return `<span style="display:flex;align-items:center;gap:10px;font-size:${t.fs(18)};color:#3E352F">${text}${chev}</span>`;
+    return `<span style="display:flex;align-items:center;gap:14px;font-size:${t.fs(18)}"><span style="color:#8A7D70">‹</span><span style="min-width:220px;text-align:center">${text}</span><span style="color:#8A7D70">›</span></span>`;
+  };
+  const pick=(l,v,s)=>`<div style="${rowBase}height:${rowH}px;box-sizing:border-box;padding:0 20px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:${t.fs(19)};font-weight:600">${l}</span>${valueCtl(v,s)}</div>`;
+  const thumb = d==='ipad' ? 30 : d==='mac' ? 18 : 22;
+  const slider = `<div style="height:${d==='ipad'?10:d==='mac'?6:8}px;border-radius:5px;background:#EEE8DF;position:relative;margin:${d==='ipad'?10:4}px 0"><div style="position:absolute;left:0;top:0;bottom:0;width:16%;border-radius:5px;background:${p.p}"></div><div style="position:absolute;left:16%;top:50%;width:${thumb}px;height:${thumb}px;margin:-${thumb/2}px 0 0 -${thumb/2}px;border-radius:50%;background:#FFF;border:3px solid ${p.p};box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.15)"></div></div>`;
+  const focusRow = d==='controller';
+  const bitrate=`<div style="${focusRow?`background:#FFF;border:1px solid ${t.bg.line};border-radius:${r}px;position:relative;z-index:1;${smallFocus(t)}`:rowBase}padding:${d==='mac'?12:16}px 20px;display:flex;flex-direction:column;gap:${d==='mac'?8:12}px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:${t.fs(19)};font-weight:700">Bitrate</span>${d==='mac'?`<span style="display:flex;align-items:center;gap:8px"><span style="height:30px;width:64px;border-radius:7px;border:1px solid #E2D9CC;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;box-sizing:border-box;font-weight:700;font-size:${t.fs(16)}">28</span><span style="font-size:${t.fs(16)};color:#5A4E45">Mbps</span></span>`:`<span style="font-family:${t.H};font-size:${t.fs(24)};font-weight:800">28 Mbps</span>`}</div>
+    ${slider}
+    <span style="font-size:${t.fs(15)};color:#5A4E45">Good range for 1280 × 800 at 90 fps with HEVC: about 20 to 30 Mbps. Higher mostly costs Wi-Fi headroom.</span></div>`;
+  const sw = d==='mac' ? [38,22] : d==='ipad' ? [60,34] : [56,30];
+  const toggle=`<div style="${rowBase}min-height:${rowH}px;box-sizing:border-box;padding:8px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:${t.fs(19)};font-weight:600">Auto bitrate</span><span style="font-size:${t.fs(14)};color:#6B5F55">Drops quality briefly instead of stuttering when Wi-Fi gets busy</span></span><span style="width:${sw[0]}px;height:${sw[1]}px;flex-shrink:0;border-radius:999px;background:${p.p};display:flex;justify-content:flex-end;align-items:center;padding:3px;box-sizing:border-box"><span style="width:${sw[1]-6}px;height:${sw[1]-6}px;border-radius:50%;background:#FFF;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span></span></div>`;
+  const list=[pick('Resolution','1280 × 800','native'),pick('Frame rate','90 fps','matches screen'),bitrate,pick('Video codec','HEVC 10-bit'),toggle,pick('Smoothness','Balanced','one frame of buffer')].join('');
+  const wrapList=rows==='grouped'?`<div style="background:#FFF;border:1px solid ${t.bg.line};border-radius:${t.R}px;padding:6px;display:flex;flex-direction:column;gap:4px">${list}</div>`:`<div style="display:flex;flex-direction:column;gap:${rows==='divided'?2:8}px">${list}</div>`;
+  const chipH = d==='mac' ? 32 : 44;
+  const presets = d==='mac'
+    ? `<div style="display:flex;padding:3px;border-radius:10px;background:#EEE8DF">${['Battery saver','Balanced','Best picture','Docked TV'].map((l,i)=>`<span style="height:28px;padding:0 12px;border-radius:7px;display:flex;align-items:center;font-size:${t.fs(15)};font-weight:700;${i===1?'background:#FFF;box-shadow:0 1px 3px rgba(0,0,0,.12)':'color:#5A4E45'}">${l}</span>`).join('')}</div>`
+    : `<div style="display:flex;gap:8px">${['Battery saver','Balanced','Best picture','Docked TV'].map((l,i)=>`<span style="height:${chipH}px;box-sizing:border-box;padding:0 16px;border-radius:999px;border:1.5px solid ${i===1?p.p:'#E6DFD4'};background:${i===1?p.tint:'#FFF'};font-size:${t.fs(16)};font-weight:700;display:flex;align-items:center">${l}</span>`).join('')}</div>`;
+  const side = d==='mac' ? 230 : 260;
+  return `<div style="width:${t.W}px;height:${t.Hh}px;box-sizing:border-box;background:${t.bg.g};color:#2A2420;font-family:${t.B};font-weight:500;display:flex;flex-direction:column;overflow:hidden">
+    ${header(t,'settings')}
+    <div style="flex:1;min-height:0;display:flex">
+      <div style="width:${side}px;flex-shrink:0;padding:${d==='mac'?'18px 12px 0 20px':'26px 16px 0 '+(d==='ipad'?32:40)+'px'};box-sizing:border-box;display:flex;flex-direction:column;gap:${d==='mac'?2:6}px;border-right:1px solid ${t.bg.line};${d==='mac'?`background:${t.bg.foot};`:''}">${nav}</div>
+      <main style="flex:1;min-width:0;padding:${d==='mac'?'22px 32px 0':'26px '+(d==='ipad'?32:40)+'px 0 32px'};display:flex;flex-direction:column;gap:14px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font-family:${t.H};font-size:${t.fs(30)};font-weight:800">Stream</span>${presets}</div>
+        ${wrapList}
+      </main>
+    </div>
+    ${footer(t,[['◀ ▶','Adjust'],['Y','Reset to preset'],['B','Back']])}
+  </div>`;
+}
+
+function summarize(){
+  const names = {bg:'Background',pal:'Palette',font:'Font',radius:'Corners',size:'Text size',ring:'Controller focus',status:'Status',media:'Card picture',backdrop:'Pair backdrop',navsel:'Settings menu selection',rows:'Settings rows',macact:'Mac card actions',padact:'iPad card actions',padpin:'iPad PIN entry'};
+  const lines = Object.keys(OPTS).map(k => `${names[k]}: ${get(k).name.replace(' (current)','')}`);
+  const notes = document.getElementById('notes').value.trim();
+  document.getElementById('summary').textContent = lines.join(' · ') + (notes ? `\nNotes: ${notes}` : '');
+}
+function render(){
+  const t = T();
+  const frame = document.getElementById('frame');
+  frame.style.aspectRatio = `${t.W} / ${t.Hh}`;
+  const s = document.getElementById('screen');
+  s.style.width = t.W + 'px'; s.style.height = t.Hh + 'px';
+  s.innerHTML = screen==='pair' ? pair(t) : screen==='settings' ? settings(t) : hosts(t);
+  updateDetect(); summarize(); fit();
+}
+function fit(){ const t = DEVICES[dev()]; const w = document.getElementById('frame').clientWidth; document.getElementById('screen').style.transform = `scale(${w/t.w})`; }
+new ResizeObserver(fit).observe(document.getElementById('frame'));
+
+document.getElementById('copy').addEventListener('click', async () => {
+  const b = document.getElementById('copy'), t = document.getElementById('summary').textContent;
+  try { await navigator.clipboard.writeText(t); b.textContent = 'Copied'; }
+  catch(e) { const r = document.createRange(); r.selectNodeContents(document.getElementById('summary')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = 'Selected: press Copy'; }
+  setTimeout(() => b.textContent = 'Copy my picks', 1800);
+});
+
+[detected, reason] = firstGuess();
+buildControls(); setScreen(screen);
+</script>

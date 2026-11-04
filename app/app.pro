@@ -221,6 +221,7 @@ SOURCES += \
     path.cpp \
     settings/mappingmanager.cpp \
     gui/sdlgamepadkeynavigation.cpp \
+    gui/inputmode.cpp \
     streaming/video/overlaymanager.cpp \
     streaming/vrrratepolicy.cpp \
     streaming/video/pyrowave/pyrowavecalibrator.cpp \
@@ -300,6 +301,8 @@ HEADERS += \
     path.h \
     settings/mappingmanager.h \
     gui/sdlgamepadkeynavigation.h \
+    gui/inputmode.h \
+    gui/inputmodepolicy.h \
     streaming/video/overlaymanager.h \
     streaming/video/clientpacingwarning.h \
     streaming/video/pyrowave/pyrowavepacketlosswarning.h \

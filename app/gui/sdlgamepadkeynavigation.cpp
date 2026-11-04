@@ -1,4 +1,5 @@
 #include "sdlgamepadkeynavigation.h"
+#include "inputmode.h"
 
 #include <QKeyEvent>
 #include <QGuiApplication>
@@ -128,6 +129,9 @@ void SdlGamepadKeyNavigation::onPollingTimerFired()
             break;
         case SDL_CONTROLLERBUTTONDOWN:
         case SDL_CONTROLLERBUTTONUP:
+            if (event.type == SDL_CONTROLLERBUTTONDOWN) {
+                InputMode::instance()->reportControllerUsed();
+            }
         {
             QEvent::Type type =
                     event.type == SDL_CONTROLLERBUTTONDOWN ?
@@ -306,7 +310,9 @@ void SdlGamepadKeyNavigation::sendKey(QEvent::Type type, Qt::Key key, Qt::Keyboa
     QWindow* focusWindow = target ? target : app->focusWindow();
     if (focusWindow != nullptr) {
         QKeyEvent keyPressEvent(type, key, modifiers);
+        InputMode::instance()->setSynthesizingKeys(true);
         app->sendEvent(focusWindow, &keyPressEvent);
+        InputMode::instance()->setSynthesizingKeys(false);
     }
 }
 
