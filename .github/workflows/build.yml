@@ -11,7 +11,8 @@ on:
 
 concurrency:
   group: build-${{ github.ref }}
-  cancel-in-progress: true
+  # Let every main build finish so each pushed commit gets a Deck Flatpak.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test-input-motion:
