@@ -100,11 +100,24 @@ bool SdlAudioRenderer::submitAudio(int bytesWritten)
         return true;
     }
 
-    // Don't queue if there's already more than 30 ms of audio data waiting
-    // in Moonlight's audio queue.
-    if (LiGetPendingAudioDuration() > 30) {
+    const Uint32 pendingMs = (Uint32)LiGetPendingAudioDuration();
+    const Uint32 deviceMsBefore = SDL_GetQueuedAudioSize(m_AudioDevice) / m_FrameSize * m_FrameDurationMs;
+    if (m_StartedPlaying && deviceMsBefore == 0) {
+        // The speaker had nothing left to play: an audible gap
+        m_StatUnderruns++;
+    }
+
+    // Catch up when audio has backed up in Moonlight's queue. Stock Moonlight
+    // drops every chunk while more than 30 ms is waiting; on Wi-Fi, packets
+    // arrive in bursts, so that dropped runs of audio and crackled. DeckVoid
+    // waits until 60 ms is waiting and drops at most every other chunk.
+    if (pendingMs > 60 && !m_DroppedLastChunk) {
+        m_DroppedLastChunk = true;
+        m_StatDropped++;
+        logAudioStats(pendingMs, deviceMsBefore);
         return true;
     }
+    m_DroppedLastChunk = false;
 
     // Provide backpressure on the queue to ensure too many frames don't build up
     // in SDL's audio queue, but don't wait forever to avoid a deadlock if the
@@ -129,8 +142,38 @@ bool SdlAudioRenderer::submitAudio(int bytesWritten)
                      "Failed to queue audio sample: %s",
                      SDL_GetError());
     }
+    else {
+        m_StartedPlaying = true;
+        m_StatQueued++;
+    }
 
+    logAudioStats(pendingMs, SDL_GetQueuedAudioSize(m_AudioDevice) / m_FrameSize * m_FrameDurationMs);
     return true;
+}
+
+void SdlAudioRenderer::logAudioStats(Uint32 pendingMs, Uint32 deviceMs)
+{
+    m_StatMaxPendingMs = SDL_max(m_StatMaxPendingMs, pendingMs);
+    m_StatMaxDeviceMs = SDL_max(m_StatMaxDeviceMs, deviceMs);
+
+    const Uint32 now = SDL_GetTicks();
+    if (m_StatWindowStartMs == 0) {
+        m_StatWindowStartMs = now;
+        return;
+    }
+    if (now - m_StatWindowStartMs < 1000) {
+        return;
+    }
+
+    // One line per second, only when something is worth seeing
+    if (m_StatDropped != 0 || m_StatUnderruns != 0 || m_StatMaxPendingMs > 30) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Audio 1s: played %u, dropped %u, speaker ran dry %u, max waiting %u ms, max device queue %u ms",
+                    m_StatQueued, m_StatDropped, m_StatUnderruns, m_StatMaxPendingMs, m_StatMaxDeviceMs);
+    }
+    m_StatWindowStartMs = now;
+    m_StatQueued = m_StatDropped = m_StatUnderruns = 0;
+    m_StatMaxPendingMs = m_StatMaxDeviceMs = 0;
 }
 
 IAudioRenderer::AudioFormat SdlAudioRenderer::getAudioBufferFormat()
