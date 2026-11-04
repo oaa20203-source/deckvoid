@@ -1,4 +1,4 @@
-name: Build - Linux Flatpak nightly
+name: Build - DeckVoid Flatpak
 permissions:
   contents: read
 on:
@@ -69,7 +69,7 @@ jobs:
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          path = Path('packaging/flatpak/com.moonlight_stream.Moonlight.json')
+          path = Path('packaging/flatpak/io.github.oaa20203_source.deckvoid.json')
           manifest = json.loads(path.read_text())
           for dependency in manifest['modules']:
               for source in dependency.get('sources', []):
@@ -78,12 +78,13 @@ jobs:
                       staged = path.parent / original.name
                       staged.write_bytes(original.read_bytes())
                       source['path'] = staged.name
-          module = next(m for m in manifest['modules'] if m['name'] == 'moonlight')
+          module = next(m for m in manifest['modules'] if m['name'] == 'deckvoid')
           sdl = next(m for m in manifest['modules'] if m['name'] == 'SDL3')
           sdl['build-options']['config-opts'].append('-DSDL_WAYLAND=ON')
+          module['sources'][0].pop('branch', None)
+          module['sources'][0]['url'] = 'https://github.com/' + os.environ['GITHUB_REPOSITORY'] + '.git'
           module['sources'][0]['commit'] = os.environ['SOURCE_SHA']
           import re
-          assert re.fullmatch(r'6\.[12]\.0-daily\.[1-9][0-9]*', os.environ['CI_VERSION'])
           module['post-install'] = [
               'python3 -m unittest discover -s scripts/tests -p test_amdgpu_header_compat.py',
               'g++ -std=c++17 -fsyntax-only -Iapp/streaming scripts/linux-gpu-capability.cpp',
@@ -104,10 +105,10 @@ jobs:
         run: |
           dbus-run-session -- flatpak run --env=CCACHE_DIR="$CCACHE_DIR" --env=CCACHE_MAXSIZE=512M org.flatpak.Builder --user --force-clean --sandbox --ccache --jobs="$BUILD_JOBS" --rebuild-on-sdk-change \
             --install-deps-from=flathub --repo=flatpak-repo flatpak-build \
-            packaging/flatpak/com.moonlight_stream.Moonlight.json
+            packaging/flatpak/io.github.oaa20203_source.deckvoid.json
           flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
-            flatpak-repo "Moonlight-$CI_VERSION-x86_64.flatpak" \
-            com.moonlight_stream.Moonlight master
+            flatpak-repo "DeckVoid-$CI_VERSION-x86_64.flatpak" \
+            io.github.oaa20203_source.deckvoid master
       - name: Verify exported source and Gamescope patch
         run: |
           python3 - <<'PY'
@@ -115,7 +116,7 @@ jobs:
           from pathlib import Path
           manifest = json.loads(Path('flatpak-build/files/manifest.json').read_text())
           modules = {m['name']: m for m in manifest['modules']}
-          assert modules['moonlight']['sources'][0]['commit'] == os.environ['SOURCE_SHA']
+          assert modules['deckvoid']['sources'][0]['commit'] == os.environ['SOURCE_SHA']
           assert any(s['type'] == 'patch' and 'libplacebo-disable-internally-synchronized-queues.patch' in s['path'] for s in modules['libplacebo']['sources'])
           PY
       - name: Install exported bundle and verify isolated launch
@@ -125,33 +126,33 @@ jobs:
           export FLATPAK_USER_DIR="$RUNNER_TEMP/nightly-flatpak-user"
           dbus-run-session -- flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           dbus-run-session -- flatpak install --user -y flathub org.kde.Platform//6.10
-          dbus-run-session -- flatpak install --user --noninteractive -y "./Moonlight-$CI_VERSION-x86_64.flatpak"
-          flatpak info --user --show-ref com.moonlight_stream.Moonlight//master | grep -Fx app/com.moonlight_stream.Moonlight/x86_64/master
-          flatpak info --user --show-runtime com.moonlight_stream.Moonlight//master | grep -Fx org.kde.Platform/x86_64/6.10
-          installed=$(flatpak info --user --show-location com.moonlight_stream.Moonlight//master)
+          dbus-run-session -- flatpak install --user --noninteractive -y "./DeckVoid-$CI_VERSION-x86_64.flatpak"
+          flatpak info --user --show-ref io.github.oaa20203_source.deckvoid//master | grep -Fx app/io.github.oaa20203_source.deckvoid/x86_64/master
+          flatpak info --user --show-runtime io.github.oaa20203_source.deckvoid//master | grep -Fx org.kde.Platform/x86_64/6.10
+          installed=$(flatpak info --user --show-location io.github.oaa20203_source.deckvoid//master)
           export INSTALLED_PATH="$installed"
           python3 - <<'PY'
           import json, os
           from pathlib import Path
           manifest = json.loads((Path(os.environ['INSTALLED_PATH']) / 'files/manifest.json').read_text())
-          module = next(m for m in manifest['modules'] if m['name'] == 'moonlight')
+          module = next(m for m in manifest['modules'] if m['name'] == 'deckvoid')
           assert module['sources'][0]['commit'] == os.environ['SOURCE_SHA']
           assert module['sources'][1]['commands'] == ['echo ' + os.environ['CI_VERSION'] + ' > app/version.txt']
-          assert (Path(os.environ['INSTALLED_PATH']) / 'files/bin/moonlight').is_file()
+          assert (Path(os.environ['INSTALLED_PATH']) / 'files/bin/deckvoid').is_file()
           PY
-          dbus-run-session -- xvfb-run -a flatpak run --user --env=QT_QPA_PLATFORM=xcb com.moonlight_stream.Moonlight//master --version > installed-version.txt
-          grep -Fx "Moonlight $CI_VERSION" installed-version.txt
-          bash scripts/smoke-linux-wayland.sh flatpak run --user --env=QT_QPA_PLATFORM=wayland com.moonlight_stream.Moonlight//master --version > installed-wayland-version.txt
-          grep -Fx "Moonlight $CI_VERSION" installed-wayland-version.txt
+          dbus-run-session -- xvfb-run -a flatpak run --user --env=QT_QPA_PLATFORM=xcb io.github.oaa20203_source.deckvoid//master --version > installed-version.txt
+          grep -Fx "DeckVoid $CI_VERSION" installed-version.txt
+          bash scripts/smoke-linux-wayland.sh flatpak run --user --env=QT_QPA_PLATFORM=wayland io.github.oaa20203_source.deckvoid//master --version > installed-wayland-version.txt
+          grep -Fx "DeckVoid $CI_VERSION" installed-wayland-version.txt
           echo 'Installed exported x86_64 bundle, source/version, runtime and sandboxed launch verified.'
       - uses: actions/upload-artifact@v6
         with:
-          name: Moonlight-Flatpak-${{ env.CI_VERSION }}
-          path: Moonlight-${{ env.CI_VERSION }}-x86_64.flatpak
+          name: DeckVoid-Flatpak-${{ env.CI_VERSION }}
+          path: DeckVoid-${{ env.CI_VERSION }}-x86_64.flatpak
           compression-level: 0
           if-no-files-found: error
       - name: Save verified Flatpak compiler cache
-        if: success() && (github.ref_name == github.event.repository.default_branch || (github.repository == 'Nonary/moonlight-qt' && github.event_name == 'workflow_dispatch' && github.ref_type == 'branch')) && steps.flatpak-ccache.outputs.cache-hit != 'true'
+        if: success() && (github.ref_name == github.event.repository.default_branch || (github.event_name == 'workflow_dispatch' && github.ref_type == 'branch')) && steps.flatpak-ccache.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .flatpak-builder/ccache

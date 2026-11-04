@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+	<id>io.github.oaa20203_source.deckvoid</id>
+	<metadata_license>CC0-1.0</metadata_license>
+	<project_license>GPL-3.0+</project_license>
+	<name>DeckVoid</name>
+	<summary>Game streaming client for Steam Deck, built for Apollo and Vibepollo hosts</summary>
+	<description>
+		<p>DeckVoid streams games and desktops from a PC running Apollo, Vibepollo or Sunshine. It is based on Moonlight and Nonary's VRR fork, adds Apollo features (OTP pairing, virtual display, server commands, clipboard sync) and is tuned for the Steam Deck OLED.</p>
+	</description>
+	<url type="homepage">https://github.com/oaa20203-source/deckvoid</url>
+	<url type="bugtracker">https://github.com/oaa20203-source/deckvoid/issues</url>
+	<url type="vcs-browser">https://github.com/oaa20203-source/deckvoid</url>
+	<developer id="io.github.oaa20203_source">
+		<name>oaa20203-source</name>
+	</developer>
+	<launchable type="desktop-id">io.github.oaa20203_source.deckvoid.desktop</launchable>
+	<provides>
+		<binary>deckvoid</binary>
+	</provides>
+	<content_rating type="oars-1.1" />
+	<releases>
+		<release version="0.1.0" date="2026-11-04" />
+	</releases>
+</component>

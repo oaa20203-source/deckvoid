@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DeckVoid
+Comment=Stream games from a PC running Apollo, Vibepollo or Sunshine, tuned for Steam Deck
+Exec=deckvoid
+Icon=deckvoid
+Terminal=false
+Type=Application
+Categories=Qt;Game;Network;RemoteAccess;
+Keywords=apollo;vibepollo;sunshine;moonlight;gamestream;stream;steam deck;remote play;
