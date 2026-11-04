@@ -20,6 +20,31 @@ CONFIG(release, debug|release) {
     }
 }
 
+# macOS: target macOS 27 on Apple Silicon only.
+# - The instruction set stays at the M1 baseline so every Apple Silicon Mac that
+#   runs macOS 27 can start the app; scheduling is tuned for M5.
+# - Release builds use -O3 and ThinLTO. The static libraries (moonlight-common-c,
+#   qmdnsengine, h264bitstream, pyrowave) are LTO'd into the app as well.
+macx {
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 27.0
+    QMAKE_APPLE_DEVICE_ARCHS = arm64
+
+    QMAKE_CFLAGS   += -mcpu=apple-m1 -mtune=apple-m5
+    QMAKE_CXXFLAGS += -mcpu=apple-m1 -mtune=apple-m5
+    QMAKE_OBJECTIVE_CFLAGS += -mcpu=apple-m1 -mtune=apple-m5
+
+    CONFIG(release, debug|release) {
+        QMAKE_CFLAGS_RELEASE   -= -O2
+        QMAKE_CXXFLAGS_RELEASE -= -O2
+        QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO   -= -O2
+        QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO -= -O2
+        QMAKE_CFLAGS   += -O3 -flto=thin
+        QMAKE_CXXFLAGS += -O3 -flto=thin
+        QMAKE_OBJECTIVE_CFLAGS += -O3 -flto=thin
+        QMAKE_LFLAGS   += -flto=thin -Wl,-cache_path_lto,$$OUT_PWD/.lto-cache -Wl,-dead_strip
+    }
+}
+
 # Enable ASan for Linux or macOS
 #CONFIG += sanitizer sanitize_address
 

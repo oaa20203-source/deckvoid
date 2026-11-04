@@ -22,4 +22,5 @@ config.tests/*/Makefile
 /app/Moonlight_resource.rc
 /app/qml_qmlcache.qrc
 build-mac/
+build-mac27/
 build-tests/
