@@ -74,8 +74,21 @@ flatpak run io.github.oaa20203_source.deckvoid
 
 ### 7. Add it to Steam
 
-Open **Steam** on the desktop, choose **Games** → **Add a Non-Steam Game to My
-Library**, tick **!ink**, and press **Add Selected Programs**.
+Steam only finds apps installed with `--user` after you log in again, so after
+the **first** install either restart the Deck once or use **Browse…** below.
+
+1. Open **Steam** on the desktop and choose **Games** → **Add a Non-Steam Game
+   to My Library**.
+2. If **!ink** is in the list, tick it and press **Add Selected Programs**.
+3. If it isn't, press **Browse…**, type this path into the file name box and
+   press **Open**, then **Add Selected Programs**:
+
+   ```
+   /home/deck/.local/share/flatpak/exports/bin/io.github.oaa20203_source.deckvoid
+   ```
+
+   Steam will list it as `io.github.oaa20203_source.deckvoid`. Right-click it in
+   your Library → **Properties** to rename it to **!ink**.
 
 ### 8. Back to Gaming Mode
 

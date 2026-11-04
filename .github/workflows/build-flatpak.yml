@@ -155,6 +155,14 @@ jobs:
           assert module['sources'][1]['commands'] == ['echo ' + os.environ['CI_VERSION'] + ' > app/version.txt']
           assert (Path(os.environ['INSTALLED_PATH']) / 'files/bin/deckvoid').is_file()
           PY
+          # Steam's "Add a Non-Steam Game" list and the app menu read the exported
+          # launcher and icon; fail the build if either is missing.
+          exports="$FLATPAK_USER_DIR/exports/share"
+          test -f "$exports/applications/io.github.oaa20203_source.deckvoid.desktop"
+          grep -Fx 'Name=!ink' "$exports/applications/io.github.oaa20203_source.deckvoid.desktop"
+          grep -q '^Exec=.*flatpak.* run .*io.github.oaa20203_source.deckvoid' "$exports/applications/io.github.oaa20203_source.deckvoid.desktop"
+          ls "$exports"/icons/hicolor/*/apps/io.github.oaa20203_source.deckvoid.* > /dev/null
+          test -x "$FLATPAK_USER_DIR/exports/bin/io.github.oaa20203_source.deckvoid"
           dbus-run-session -- xvfb-run -a flatpak run --user --env=QT_QPA_PLATFORM=xcb io.github.oaa20203_source.deckvoid//master --version > installed-version.txt
           grep -Fx "DeckVoid $CI_VERSION" installed-version.txt
           bash scripts/smoke-linux-wayland.sh flatpak run --user --env=QT_QPA_PLATFORM=wayland io.github.oaa20203_source.deckvoid//master --version > installed-wayland-version.txt
