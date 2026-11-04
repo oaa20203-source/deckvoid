@@ -20,6 +20,9 @@
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+#include <atomic>
+#include <thread>
+#include <pthread.h>
 
 #import <Cocoa/Cocoa.h>
 #import <VideoToolbox/VideoToolbox.h>
@@ -98,6 +101,7 @@ public:
           m_HwContext(nullptr),
           m_MetalLayer(nullptr),
           m_MetalDisplayLink(nullptr),
+          m_DisplayLinkRunLoop(nullptr),
           m_VrrEnabled(false),
           m_VrrSuspended(false),
           m_FixedVsyncEnabled(false),
@@ -656,8 +660,13 @@ public:
         [commandBuffer presentDrawable:drawable];
         [commandBuffer commit];
 
-        // Wait for the command buffer to complete and free our CVMetalTextureCache references
-        [commandBuffer waitUntilCompleted];
+        // Software frames are uploaded into shared mapping textures that the
+        // next frame overwrites, so wait for the GPU before returning. Hardware
+        // frames keep their own CVMetalTexture references alive through the
+        // command buffer's completed handler, so they don't need to block here.
+        if (frame->format != AV_PIX_FMT_VIDEOTOOLBOX) {
+            [commandBuffer waitUntilCompleted];
+        }
     }}
 
     IVrrFramePresenter* getVrrFramePresenter() override
@@ -1179,11 +1188,45 @@ public:
                 return;
             }
 
-            m_MetalDisplayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:m_MetalLayer];
-            m_MetalDisplayLink.preferredFrameLatency = 1.0f;
-            m_MetalDisplayLink.preferredFrameRateRange = m_FrameRateRange;
-            m_MetalDisplayLink.delegate = [[DisplayLinkDelegate alloc] initWithRenderer:this];
-            [m_MetalDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+            CAMetalDisplayLink* link = [[CAMetalDisplayLink alloc] initWithMetalLayer:m_MetalLayer];
+            link.preferredFrameLatency = 1.0f;
+            link.preferredFrameRateRange = m_FrameRateRange;
+            link.delegate = [[DisplayLinkDelegate alloc] initWithRenderer:this];
+
+            // Run the display link on its own high-priority thread rather than the
+            // main run loop. On the main run loop every frame waited behind SDL
+            // event processing, so moving the mouse (hundreds of motion events per
+            // second) delayed or skipped presents and made the stream judder.
+            dispatch_semaphore_t ready = dispatch_semaphore_create(0);
+            CFRunLoopRef runLoop = nullptr;
+            CFRunLoopRef* runLoopOut = &runLoop;
+            m_DisplayLinkThread = std::thread([link, ready, runLoopOut]() {
+                pthread_setname_np("DeckVoidDisplayLink");
+                pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+                @autoreleasepool {
+                    CFRunLoopRef current = CFRunLoopGetCurrent();
+                    CFRetain(current);
+                    *runLoopOut = current;
+                    [link addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+                }
+                dispatch_semaphore_signal(ready);
+
+                // stopDisplayLink() invalidates the link on this thread and then
+                // stops the run loop, which ends this loop.
+                for (;;) {
+                    @autoreleasepool {
+                        SInt32 result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1.0e10, false);
+                        if (result == kCFRunLoopRunStopped || result == kCFRunLoopRunFinished) {
+                            break;
+                        }
+                    }
+                }
+            });
+            dispatch_semaphore_wait(ready, DISPATCH_TIME_FOREVER);
+            dispatch_release(ready);
+
+            m_DisplayLinkRunLoop = runLoop;
+            m_MetalDisplayLink = link;
         }
     }
 
@@ -1194,8 +1237,30 @@ public:
                 return;
             }
 
-            [m_MetalDisplayLink invalidate];
+            CAMetalDisplayLink* link = m_MetalDisplayLink;
             m_MetalDisplayLink = nullptr;
+
+            // Invalidate on the display link thread so no callback can be running
+            // afterwards, then stop that thread's run loop and wait for it to exit.
+            CFRunLoopRef runLoop = m_DisplayLinkRunLoop;
+            m_DisplayLinkRunLoop = nullptr;
+            if (runLoop != nullptr) {
+                CFRunLoopPerformBlock(runLoop, kCFRunLoopDefaultMode, ^{
+                    [link invalidate];
+                    CFRunLoopStop(CFRunLoopGetCurrent());
+                });
+                CFRunLoopWakeUp(runLoop);
+            }
+            else {
+                [link invalidate];
+            }
+            if (m_DisplayLinkThread.joinable()) {
+                m_DisplayLinkThread.join();
+            }
+            if (runLoop != nullptr) {
+                CFRelease(runLoop);
+            }
+            [link release];
         }
     }
 
@@ -1297,11 +1362,19 @@ public:
         AVFrame* frame = nullptr;
 
         // Determine how long we can wait depending on how long our CAMetalDisplayLink
-        // says we have until the next frame needs to be rendered. We will wait up to
-        // half the per-frame interval for a new frame to become available.
-        int waitTimeMs = ((targetTimestamp - CACurrentMediaTime()) * 1000) / 2;
-        if (waitTimeMs < 0) {
+        // says we have until the next frame needs to be rendered. Encoding one quad
+        // and committing takes well under a millisecond now that the callback no
+        // longer waits for the GPU, so keep a fixed render budget instead of giving
+        // up at half the interval. A frame that arrives in the second half of the
+        // interval is then shown this refresh instead of one refresh later.
+        static constexpr double kRenderBudgetMs = 2.0;
+        const double remainingMs = (targetTimestamp - CACurrentMediaTime()) * 1000.0;
+        if (remainingMs < 0) {
             return;
+        }
+        int waitTimeMs = (int)(remainingMs - kRenderBudgetMs);
+        if (waitTimeMs < 0) {
+            waitTimeMs = 0;
         }
 
         // Wait for a new frame to be ready
@@ -1325,6 +1398,8 @@ private:
     AVBufferRef* m_HwContext;
     CAMetalLayer* m_MetalLayer;
     CAMetalDisplayLink* m_MetalDisplayLink API_AVAILABLE(macos(14.0));
+    std::thread m_DisplayLinkThread;
+    CFRunLoopRef m_DisplayLinkRunLoop;
     bool m_VrrEnabled;
     bool m_VrrSuspended;
     bool m_FixedVsyncEnabled;
