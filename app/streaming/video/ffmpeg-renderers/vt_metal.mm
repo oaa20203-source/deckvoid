@@ -1211,6 +1211,14 @@ public:
         if (m_VrrEnabled) {
             return; // The shared VRR worker owns cadence and drawable presentation.
         }
+        // Present each frame as soon as it is decoded, the way VoidLink does,
+        // instead of waiting for a CAMetalDisplayLink callback. The link renders
+        // one refresh ahead of its target (preferredFrameLatency = 1) and only
+        // after the next callback fires, which added about a refresh of input
+        // latency on average. DECKVOID_METAL_DISPLAY_LINK=1 restores the link.
+        if (qgetenv("DECKVOID_METAL_DISPLAY_LINK") != "1") {
+            return;
+        }
         if (@available(macOS 14, *)) {
             if (m_MetalDisplayLink != nullptr || !m_MetalLayer.displaySyncEnabled || !isAppleSilicon()) {
                 return;
