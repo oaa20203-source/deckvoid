@@ -112,6 +112,12 @@ public:
           m_LatestUnrenderedFrame(nullptr),
           m_FrameLock(SDL_CreateMutex()),
           m_FrameReady(SDL_CreateCond()),
+          m_LinkPresentedFrames(0),
+          m_LinkReplacedFrames(0),
+          m_LinkStarvedCallbacks(0),
+          m_LinkTimedFrames(0),
+          m_LinkDecodeToCommitUs(0),
+          m_LinkRenderUs(0),
           m_TextureCache(nullptr),
           m_CscParamsBuffer(nullptr),
           m_VideoVertexBuffer(nullptr),
@@ -134,6 +140,23 @@ public:
     { @autoreleasepool {
         // Stop the display link and free associated state
         stopDisplayLink();
+
+        const uint64_t presented = m_LinkPresentedFrames.load(std::memory_order_relaxed);
+        const uint64_t replaced = m_LinkReplacedFrames.load(std::memory_order_relaxed);
+        const uint64_t timed = m_LinkTimedFrames.load(std::memory_order_relaxed);
+        if (presented + replaced != 0) {
+            // Pacer's stats can't see this path: renderFrame() only hands the
+            // frame over, so its render time and drop count read as ~0.
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                        "Metal display link: presented %llu, replaced before present %llu (%.2f%%), "
+                        "starved callbacks %llu, avg decode-to-commit %.2f ms, avg encode+commit %.2f ms",
+                        (unsigned long long)presented,
+                        (unsigned long long)replaced,
+                        replaced * 100.0 / (presented + replaced),
+                        (unsigned long long)m_LinkStarvedCallbacks.load(std::memory_order_relaxed),
+                        timed ? m_LinkDecodeToCommitUs.load(std::memory_order_relaxed) / 1000.0 / timed : 0.0,
+                        presented ? m_LinkRenderUs.load(std::memory_order_relaxed) / 1000.0 / presented : 0.0);
+        }
         cancelFrame();
         av_frame_free(&m_LatestUnrenderedFrame);
         SDL_DestroyCond(m_FrameReady);
@@ -936,6 +959,11 @@ public:
             SDL_UnlockMutex(m_FrameLock);
             SDL_CondSignal(m_FrameReady);
 
+            if (oldFrame != nullptr) {
+                // A decoded frame the link callback never saw. This is the only
+                // client-side drop on this path and Pacer cannot observe it.
+                m_LinkReplacedFrames.fetch_add(1, std::memory_order_relaxed);
+            }
             av_frame_free(&oldFrame);
         }
         else {
@@ -1387,8 +1415,24 @@ public:
 
         // Render a frame if we got one in time
         if (frame != nullptr) {
+            const uint64_t beforeRender = LiGetMicroseconds();
             renderFrameIntoDrawable(frame, drawable);
+            const uint64_t afterCommit = LiGetMicroseconds();
+            m_LinkPresentedFrames.fetch_add(1, std::memory_order_relaxed);
+            m_LinkRenderUs.fetch_add(afterCommit - beforeRender, std::memory_order_relaxed);
+            // pkt_dts carries the decoder-output time; smoke-test frames leave
+            // it at AV_NOPTS_VALUE, so only count positive, non-future values.
+            if (frame->pkt_dts > 0 && afterCommit >= static_cast<uint64_t>(frame->pkt_dts)) {
+                m_LinkTimedFrames.fetch_add(1, std::memory_order_relaxed);
+                m_LinkDecodeToCommitUs.fetch_add(afterCommit - static_cast<uint64_t>(frame->pkt_dts),
+                                                 std::memory_order_relaxed);
+            }
             av_frame_free(&frame);
+        }
+        else {
+            // Expected at a steady rate whenever the source runs below the
+            // link cadence (e.g. 114 FPS under 120 Hz); not a stall by itself.
+            m_LinkStarvedCallbacks.fetch_add(1, std::memory_order_relaxed);
         }
     }
 
@@ -1414,6 +1458,14 @@ private:
     AVFrame* m_LatestUnrenderedFrame;
     SDL_mutex* m_FrameLock;
     SDL_cond* m_FrameReady;
+    // CAMetalDisplayLink path diagnostics. renderFrame() runs on the Pacer
+    // render thread and the link callback on the display link thread.
+    std::atomic<uint64_t> m_LinkPresentedFrames;
+    std::atomic<uint64_t> m_LinkReplacedFrames;
+    std::atomic<uint64_t> m_LinkStarvedCallbacks;
+    std::atomic<uint64_t> m_LinkTimedFrames;
+    std::atomic<uint64_t> m_LinkDecodeToCommitUs;
+    std::atomic<uint64_t> m_LinkRenderUs;
     CVMetalTextureCacheRef m_TextureCache;
     id<MTLBuffer> m_CscParamsBuffer;
     id<MTLBuffer> m_VideoVertexBuffer;
