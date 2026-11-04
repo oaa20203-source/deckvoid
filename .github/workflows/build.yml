@@ -76,7 +76,8 @@ jobs:
 
   # Publish every main build as the "Latest Steam Deck build" release, with a
   # fixed file name, so it can be downloaded on the Deck without a GitHub login:
-  # https://github.com/oaa20203-source/deckvoid/releases/latest/download/DeckVoid-x86_64.flatpak
+  # https://github.com/oaa20203-source/deckvoid/releases/latest/download/ink-x86_64.flatpak
+  # (GitHub drops the "!" from asset names, so the file is ink-, not !ink-.)
   publish-deck-build:
     needs: [setup, build-flatpak]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -90,7 +91,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@v5
         with:
-          name: DeckVoid-Flatpak-${{ needs.setup.outputs.ci_version }}
+          name: ink-Flatpak-${{ needs.setup.outputs.ci_version }}
       - name: Update the latest-build release
         shell: bash
         env:
@@ -99,7 +100,9 @@ jobs:
           CI_VERSION: ${{ needs.setup.outputs.ci_version }}
         run: |
           set -euo pipefail
-          cp "DeckVoid-$CI_VERSION-x86_64.flatpak" DeckVoid-x86_64.flatpak
+          cp "ink-$CI_VERSION-x86_64.flatpak" ink-x86_64.flatpak
+          # Builds up to 39a701e6 look for the old file name when they self-update
+          cp ink-x86_64.flatpak DeckVoid-x86_64.flatpak
 
           # The commit the previous build was made from: where the latest-build tag points
           previous=$(gh api "repos/$GH_REPO/git/ref/tags/latest-build" -q .object.sha 2>/dev/null || true)
@@ -124,4 +127,4 @@ jobs:
           else
             gh release create latest-build --target "$GITHUB_SHA" --title "Latest Steam Deck build ($CI_VERSION)" --notes "$notes" --latest
           fi
-          gh release upload latest-build DeckVoid-x86_64.flatpak --clobber
+          gh release upload latest-build ink-x86_64.flatpak DeckVoid-x86_64.flatpak --clobber

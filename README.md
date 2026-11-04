@@ -46,13 +46,13 @@ flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/fl
 ### 4. Download !ink
 
 ```sh
-curl -L -o ~/Downloads/DeckVoid-x86_64.flatpak https://github.com/oaa20203-source/deckvoid/releases/latest/download/DeckVoid-x86_64.flatpak
+curl -L -o ~/Downloads/ink-x86_64.flatpak https://github.com/oaa20203-source/deckvoid/releases/latest/download/ink-x86_64.flatpak
 ```
 
 Check the download:
 
 ```sh
-ls -lh ~/Downloads/DeckVoid-x86_64.flatpak
+ls -lh ~/Downloads/ink-x86_64.flatpak
 ```
 
 It should be about 7 MB. If it is only a few bytes, a new build is still being
@@ -61,7 +61,7 @@ published; try again in a few minutes.
 ### 5. Install
 
 ```sh
-flatpak install --user -y ~/Downloads/DeckVoid-x86_64.flatpak
+flatpak install --user -y ~/Downloads/ink-x86_64.flatpak
 ```
 
 The first install also downloads the KDE runtime (a few hundred MB).
@@ -115,7 +115,7 @@ Library to finish. Your settings and paired PCs are kept.
 To update by hand, repeat step 4, then:
 
 ```sh
-flatpak install --user -y --reinstall ~/Downloads/DeckVoid-x86_64.flatpak
+flatpak install --user -y --reinstall ~/Downloads/ink-x86_64.flatpak
 ```
 
 ### Uninstalling

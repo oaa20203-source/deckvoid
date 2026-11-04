@@ -16,7 +16,7 @@
 namespace {
 const char* kAppId = "io.github.oaa20203_source.deckvoid";
 const char* kReleaseApi = "https://api.github.com/repos/oaa20203-source/deckvoid/releases/tags/latest-build";
-const char* kBundleUrl = "https://github.com/oaa20203-source/deckvoid/releases/latest/download/DeckVoid-x86_64.flatpak";
+const char* kBundleUrl = "https://github.com/oaa20203-source/deckvoid/releases/latest/download/ink-x86_64.flatpak";
 constexpr int kCheckIntervalMs = 6 * 60 * 60 * 1000;
 constexpr int kFirstCheckDelayMs = 10 * 1000;
 }
@@ -124,7 +124,7 @@ void InkUpdater::update()
     // on the host, so the host's flatpak can read the bundle we write there.
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QStringLiteral("/ink-update");
     QDir().mkpath(dir);
-    const QString path = dir + QStringLiteral("/DeckVoid-x86_64.flatpak");
+    const QString path = dir + QStringLiteral("/ink-x86_64.flatpak");
     QFile::remove(path);
 
     m_DownloadFile = new QFile(path, this);
