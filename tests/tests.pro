@@ -9,6 +9,8 @@ contains(CONFIG, tests) {
     SUBDIRS += powerActions powerActionView
     launchWarning.file = $$PWD/backend/launchwarning.pro
     SUBDIRS += launchWarning
+    apollo.file = $$PWD/apollo/apollo.pro
+    SUBDIRS += apollo
     SUBDIRS += updates
     SUBDIRS += vrr
     SUBDIRS += haptics

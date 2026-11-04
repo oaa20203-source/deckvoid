@@ -1,5 +1,6 @@
 #include "computermodel.h"
 #include "onlinecomputerentries.h"
+#include "backend/apollo/apollopermissions.h"
 
 #include <QThreadPool>
 
@@ -89,11 +90,49 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
                tr("MAC Address: %1").arg(computer->macAddress.isEmpty() ? tr("Unknown") : QString(computer->macAddress.toHex(':'))) + '\n' +
                tr("Pair State: %1").arg(pairState) + '\n' +
                tr("Running Game ID: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->currentGameId) : tr("Unknown")) + '\n' +
-               tr("HTTPS Port: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->activeHttpsPort) : tr("Unknown"));
+               tr("HTTPS Port: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->activeHttpsPort) : tr("Unknown")) +
+               apolloDetails(computer);
     }
     default:
         return QVariant();
     }
+}
+
+// Extra "View Details" lines for Apollo-family hosts; empty for other hosts.
+QString ComputerModel::apolloDetails(const NvComputer* computer) const
+{
+    if (computer->state != NvComputer::CS_ONLINE || !computer->isApollo()) {
+        return QString();
+    }
+
+    const auto& apollo = computer->apollo;
+    QString virtualDisplay;
+    if (!apollo.virtualDisplayCapable) {
+        virtualDisplay = tr("Not supported");
+    }
+    else if (!apollo.virtualDisplayDriverReady) {
+        virtualDisplay = tr("Supported, driver not ready");
+    }
+    else {
+        virtualDisplay = apollo.virtualDisplayHdrCapable ? tr("Ready (HDR)") : tr("Ready");
+    }
+
+    QString permissions;
+    if (!apollo.permissionsKnown) {
+        permissions = tr("Unknown until paired");
+    }
+    else {
+        const auto names = ApolloPermissions::names(apollo.permissions);
+        permissions = names.isEmpty() ? tr("None") : names.join(QStringLiteral(", "));
+    }
+
+    QString text = QStringLiteral("\n\n") + tr("Apollo host") + '\n' +
+                   tr("Virtual Display: %1").arg(virtualDisplay) + '\n' +
+                   tr("Permissions: %1").arg(permissions);
+    if (!apollo.serverCommands.isEmpty()) {
+        text += '\n' + tr("Server Commands: %1").arg(apollo.serverCommands.size());
+    }
+    return text;
 }
 
 int ComputerModel::rowCount(const QModelIndex& parent) const

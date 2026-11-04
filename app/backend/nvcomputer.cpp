@@ -180,6 +180,8 @@ NvComputer::NvComputer(NvHTTP& http, QString serverInfo)
     this->virtualDisplayFrameLimiterEnabled = limiter.virtualDisplayEnabled;
     this->frameLimiterFpsLimitMilliHz = limiter.fpsLimitMilliHz;
 
+    this->apollo = ApolloHostInfo::fromServerInfo(serverInfo);
+
     this->displayModes = NvHTTP::getDisplayModeList(serverInfo);
     std::stable_sort(this->displayModes.begin(), this->displayModes.end(),
                      [](const NvDisplayMode& mode1, const NvDisplayMode& mode2) {
@@ -584,6 +586,7 @@ bool NvComputer::update(const NvComputer& that)
     ASSIGN_IF_CHANGED(frameLimiterEnabled);
     ASSIGN_IF_CHANGED(virtualDisplayFrameLimiterEnabled);
     ASSIGN_IF_CHANGED(frameLimiterFpsLimitMilliHz);
+    ASSIGN_IF_CHANGED(apollo);
     ASSIGN_IF_CHANGED(currentGameId);
     ASSIGN_IF_CHANGED(activeAddress);
     ASSIGN_IF_CHANGED(state);

@@ -61,6 +61,8 @@ private slots:
     void handlePairingCompleted(NvComputer* computer, QString error);
 
 private:
+    QString apolloDetails(const NvComputer* computer) const;
+
     QVector<NvComputer*> m_Computers;
     ComputerManager* m_ComputerManager;
 };

@@ -2,6 +2,7 @@
 
 #include "nvhttp.h"
 #include "nvaddress.h"
+#include "apollo/apollohostinfo.h"
 
 #include <QThread>
 #include <QReadWriteLock>
@@ -110,6 +111,9 @@ public:
     bool frameLimiterEnabled = false;
     bool virtualDisplayFrameLimiterEnabled = false;
     uint32_t frameLimiterFpsLimitMilliHz = 0;
+    // Apollo/Vibepollo /serverinfo extensions; refreshed on every poll, never persisted.
+    ApolloHostInfo apollo;
+    bool isApollo() const { return apollo.detected; }
 
     // Persisted traits
     NvAddress localAddress;
