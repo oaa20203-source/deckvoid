@@ -22,86 +22,96 @@ The design and plan live in [`docs/superpowers/specs`](docs/superpowers/specs).
 
 ## Install on Steam Deck
 
-You don't need a terminal or a GitHub account for this. Everything happens in the
-Deck's Desktop Mode with the touchscreen or trackpads.
-
-### What you need
-
-- A Windows PC running [Vibepollo](https://github.com/Nonary/vibepollo) or Apollo, on
-  the same network as the Deck.
-- About 1 GB of free space on the Deck (the first install also downloads the KDE
-  runtime DeckVoid uses).
+Everything happens in Desktop Mode, in the terminal. The download link always
+gives the newest build of `main`.
 
 ### 1. Switch to Desktop Mode
 
-Press the **Steam** button, choose **Power**, then **Switch to Desktop**.
+Press the **Steam** button, then **Power** → **Switch to Desktop**.
 
-To type in Desktop Mode, press **Steam + X** to bring up the on-screen keyboard.
+### 2. Open the terminal
 
-### 2. Download DeckVoid
+Open the application launcher (bottom left), then **System** → **Konsole**.
+Press **Steam + X** for the on-screen keyboard, or plug in a keyboard. Press
+Enter after each command.
 
-Open a web browser on the Deck. If there isn't one, open **Discover** (the shopping-bag
-icon in the taskbar), search for **Firefox**, and press **Install**.
+### 3. Make sure Flathub is available
 
-In the browser, go to this address. The download starts straight away:
+DeckVoid's runtime libraries come from Flathub.
 
-**https://github.com/oaa20203-source/deckvoid/releases/latest/download/DeckVoid-x86_64.flatpak**
+```sh
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+```
 
-The file is saved to your **Downloads** folder.
+### 4. Download DeckVoid
 
-### 3. Install it
+```sh
+curl -L -o ~/Downloads/DeckVoid-x86_64.flatpak https://github.com/oaa20203-source/deckvoid/releases/latest/download/DeckVoid-x86_64.flatpak
+```
 
-1. Open **Dolphin**, the file manager (the folder icon in the taskbar).
-2. Click **Downloads** on the left.
-3. Double-click **DeckVoid-x86_64.flatpak**. **Discover** opens with DeckVoid's page.
-4. Press **Install** and wait for it to finish. The first time can take a few minutes.
+Check the download:
 
-If double-clicking opens something other than Discover, right-click the file, choose
-**Open With**, and pick **Discover**.
+```sh
+ls -lh ~/Downloads/DeckVoid-x86_64.flatpak
+```
 
-### 4. Add DeckVoid to Steam
+It should be about 7 MB. If it is only a few bytes, a new build is still being
+published; try again in a few minutes.
 
-1. Open **Steam** from the desktop.
-2. Click **Games** in the top menu, then **Add a Non-Steam Game to My Library**.
-3. Tick **DeckVoid** in the list and press **Add Selected Programs**.
+### 5. Install
 
-### 5. Go back to Gaming Mode
+```sh
+flatpak install --user -y ~/Downloads/DeckVoid-x86_64.flatpak
+```
 
-Double-click **Return to Gaming Mode** on the desktop. DeckVoid is now in your
-**Library**, under **Non-Steam**.
+The first install also downloads the KDE runtime (a few hundred MB).
 
-### 6. Pair with your PC
+### 6. Try it
 
-1. Start DeckVoid. Your PC should appear on the Hosts screen. If it doesn't, choose
-   **Add PC** and type the PC's IP address.
-2. Select the PC. DeckVoid shows a 4-digit PIN.
-3. On the PC, open Vibepollo's web page (**https://localhost:47990**), go to the **PIN**
-   page, and type the PIN in.
+```sh
+flatpak run io.github.oaa20203_source.deckvoid
+```
 
-DeckVoid has its own settings and app ID (`io.github.oaa20203_source.deckvoid`), so it
-sits next to stock Moonlight. PCs paired in Moonlight aren't carried over, so pair them
-again in DeckVoid.
+### 7. Add it to Steam
+
+Open **Steam** on the desktop, choose **Games** → **Add a Non-Steam Game to My
+Library**, tick **DeckVoid**, and press **Add Selected Programs**.
+
+### 8. Back to Gaming Mode
+
+Double-click **Return to Gaming Mode** on the desktop. DeckVoid is in your
+**Library** under **Non-Steam**.
+
+### 9. Pair with your PC
+
+Start DeckVoid. Your PC appears on the PCs screen (or choose **Add a PC** and type
+its IP address). Select it and DeckVoid shows a 4-digit PIN; on the PC, open
+Vibepollo's web page (**https://localhost:47990**), go to **PIN**, and type it in.
+
+DeckVoid has its own settings and app ID (`io.github.oaa20203_source.deckvoid`),
+so it sits next to stock Moonlight. PCs paired in Moonlight aren't carried over.
 
 ### Updating
 
-Repeat steps 1 to 3. The download link always gives the newest build, and Discover
-replaces the old version. Your settings and paired PCs are kept.
+Repeat step 4, then:
+
+```sh
+flatpak install --user -y --reinstall ~/Downloads/DeckVoid-x86_64.flatpak
+```
+
+Your settings and paired PCs are kept.
 
 ### Uninstalling
 
-Open **Discover**, go to **Installed**, find **DeckVoid**, and press **Remove**.
-
-### If Discover won't install the file
-
-Open **Konsole** (search for it in the application menu), type this line and press
-Enter:
-
-```
-flatpak install --user ~/Downloads/DeckVoid-x86_64.flatpak
+```sh
+flatpak uninstall --user io.github.oaa20203_source.deckvoid
 ```
 
-Answer **y** to any questions. This works in Konsole's default shell; you don't
-need to install anything else.
+## Design
+
+The interface follows the design kit in [`docs/design/KIT.md`](docs/design/KIT.md):
+paper surfaces, IBM Plex Sans and Mono, flat cards, one red accent, and a ruled
+header with controller hints along the bottom.
 
 ## Building
 
