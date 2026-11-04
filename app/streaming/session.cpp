@@ -47,6 +47,14 @@
 // 106 is SDL_CODE_STEAM_CONTROLLER_LINK (input/steamcontroller/steamcontrollerhost.h)
 #define SDL_CODE_APOLLO_CLIPBOARD 107
 
+// 400 us sleep for the 2500 Hz controller polling loop
+#ifdef Q_OS_WIN32
+static inline void sleepForControllerPoll() { SDL_Delay(1); }
+#else
+#include <unistd.h>
+static inline void sleepForControllerPoll() { usleep(400); }
+#endif
+
 #include <openssl/rand.h>
 
 #include <QtEndian>
@@ -2418,7 +2426,17 @@ void Session::exec()
         // NB: This behavior was introduced in SDL 2.0.16, but had a few critical
         // issues that could cause indefinite timeouts, delayed joystick detection,
         // and other problems.
-        if (!SDL_WaitEventTimeout(&event, 1000)) {
+        // With a controller connected SDL reads it by polling every 1 ms.
+        // !ink polls every 400 us instead (2500 Hz). Without a controller,
+        // waiting for events is kept: a mouse movement wakes the loop at once.
+        if (SDL_NumJoysticks() > 0) {
+            if (!SDL_PollEvent(&event)) {
+                sleepForControllerPoll();
+                presence.runCallbacks();
+                continue;
+            }
+        }
+        else if (!SDL_WaitEventTimeout(&event, 1000)) {
             presence.runCallbacks();
             continue;
         }
