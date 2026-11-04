@@ -2,6 +2,8 @@
 #include "streaming/video/amddecodepolicy.h"
 #include <QStyleHints>
 #include <QQmlApplicationEngine>
+#include <QQuickWindow>
+#include <QTimer>
 #include <QQmlContext>
 #include <QIcon>
 #include <QQuickStyle>
@@ -1136,12 +1138,27 @@ int main(int argc, char *argv[])
             devWindowSize = QSize(sizeParts[0].toInt(), sizeParts[1].toInt());
         }
         engine.rootContext()->setContextProperty("devWindowSize", devWindowSize.isValid() ? QVariant(devWindowSize) : QVariant());
+        // Developer aid: DECKVOID_SCREENSHOT=/path.png saves the window after a few
+        // seconds and quits; DECKVOID_START_VIEW=settings[:category]|pair|apps opens that screen.
+        engine.rootContext()->setContextProperty("devScreenshotPath", QString::fromLocal8Bit(qgetenv("DECKVOID_SCREENSHOT")));
+        engine.rootContext()->setContextProperty("devStartView", QString::fromLocal8Bit(qgetenv("DECKVOID_START_VIEW")));
         engine.rootContext()->setContextProperty("runConfigChecks", commandLineParserResult == GlobalCommandLineParser::NormalStartRequested);
 
         // Load the main.qml file
         engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")));
         if (engine.rootObjects().isEmpty())
             return -1;
+
+        const QString devScreenshot = QString::fromLocal8Bit(qgetenv("DECKVOID_SCREENSHOT"));
+        if (!devScreenshot.isEmpty()) {
+            QQuickWindow* devWindow = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+            QTimer::singleShot(4500, &app, [devWindow, devScreenshot]() {
+                if (devWindow) {
+                    devWindow->grabWindow().save(devScreenshot);
+                }
+                QCoreApplication::quit();
+            });
+        }
     }
 
     int err = app.exec();

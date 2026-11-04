@@ -6,6 +6,7 @@ import StreamingPreferences 1.0
 import AppModel 1.0
 import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
+import DeckVoidTheme 1.0
 
 CenteredGridView {
     property int computerIndex
@@ -27,7 +28,8 @@ CenteredGridView {
     id: appGrid
     focus: true
     activeFocusOnTab: true
-    topMargin: 20
+    topMargin: 28
+    minMargin: Theme.pageGutter
     bottomMargin: 5
     cellWidth: 230; cellHeight: 297;
 
@@ -148,6 +150,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                     icon.source: "qrc:/res/play_arrow_FILL1_wght700_GRAD200_opsz48.svg"
                     icon.width: 75
                     icon.height: 75
+                    icon.color: Theme.text
 
                     onClicked: {
                         launchOrResumeSelectedApp(true)
@@ -158,7 +161,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                     ToolTip.timeout: 3000
                     ToolTip.visible: hovered
 
-                    Material.background: "#D0808080"
+                    Material.background: Theme.accent
                 }
 
                 RoundButton {
@@ -174,6 +177,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                     icon.source: "qrc:/res/stop_FILL1_wght700_GRAD200_opsz48.svg"
                     icon.width: 75
                     icon.height: 75
+                    icon.color: Theme.text
 
                     onClicked: {
                         doQuitGame()
@@ -184,7 +188,7 @@ import AppModel 1.0; AppModel {}', parent, '')
                     ToolTip.timeout: 3000
                     ToolTip.visible: hovered
 
-                    Material.background: "#D0808080"
+                    Material.background: Theme.accent
                 }
             }
         }
@@ -206,7 +210,10 @@ import AppModel 1.0; AppModel {}', parent, '')
             sourceComponent: Label {
                 id: appNameText
                 text: model.name
-                font.pointSize: 22
+                color: Theme.text
+                font.family: Theme.headingFont
+                font.weight: Font.Bold
+                font.pixelSize: Theme.px(26)
                 leftPadding: 20
                 rightPadding: 20
                 verticalAlignment: Text.AlignVCenter
@@ -406,7 +413,9 @@ import AppModel 1.0; AppModel {}', parent, '')
 
         Label {
             text: qsTr("This computer doesn't seem to have any applications or some applications are hidden")
-            font.pointSize: 20
+            color: Theme.textSecondary
+            font.family: Theme.headingFont
+            font.pixelSize: Theme.px(24)
             verticalAlignment: Text.AlignVCenter
             wrapMode: Text.Wrap
         }

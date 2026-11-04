@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 2.2
+import DeckVoidTheme 1.0
 import QtQuick.Window 2.2
 
 import SdlGamepadKeyNavigation 1.0
@@ -232,7 +233,7 @@ Item {
             id: stageLabel
             height: stageSpinner.height
             text: stageText
-            font.pointSize: 20
+            font.family: Theme.headingFont; font.weight: Font.DemiBold; font.pixelSize: Theme.px(26); color: Theme.text
             verticalAlignment: Text.AlignVCenter
 
             wrapMode: Text.Wrap
@@ -244,7 +245,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 50
         anchors.horizontalCenter: parent.horizontalCenter
-        font.pointSize: 18
+        font.family: Theme.bodyFont; font.pixelSize: Theme.body; color: Theme.textSecondary
         verticalAlignment: Text.AlignVCenter
 
         wrapMode: Text.Wrap

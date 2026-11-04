@@ -53,6 +53,17 @@ ComboBox {
         SdlGamepadKeyNavigation.setUiNavMode(true)
     }
 
+    // Controller mode: values change with the D-pad, shown as ‹ value ›.
+    Text {
+        visible: Theme.controllerMode && parent.activeFocus && !parent.popup.visible
+        anchors.right: parent.left
+        anchors.rightMargin: 4
+        anchors.verticalCenter: parent.verticalCenter
+        text: "‹"
+        color: Theme.textMuted
+        font.pixelSize: 26
+    }
+
     Keys.onLeftPressed: {
         if (!popup.visible) decrementCurrentIndex()
     }

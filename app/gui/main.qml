@@ -66,6 +66,34 @@ ApplicationWindow {
         }
     }
 
+    // Developer aid for screenshots (see main.cpp): open a screen, save the window, quit.
+    Timer {
+        id: devStartTimer
+        interval: 1500
+        running: typeof devStartView !== "undefined" && devStartView !== ""
+        onTriggered: {
+            var parts = devStartView.split(":")
+            if (parts[0] === "settings") {
+                showSettings()
+                if (parts.length > 1) stackView.currentItem.category = parts[1]
+            }
+            else if (parts[0] === "pair" && stackView.currentItem.openPairPreview) {
+                stackView.currentItem.openPairPreview()
+            }
+            else if (parts[0] === "apps" && stackView.currentItem.openFirstHost) {
+                stackView.currentItem.openFirstHost()
+            }
+            else if (parts[0] === "dialog") {
+                devDialog.open()
+            }
+        }
+    }
+    NavigableMessageDialog {
+        id: devDialog
+        text: qsTr("Are you sure you want to remove '%1'?").arg("Living Room PC")
+        standardButtons: Dialog.Yes | Dialog.No
+    }
+
     function hasHardwareAccelerationChanged() {
         if (!SystemProperties.hasHardwareAcceleration && StreamingPreferences.videoDecoderSelection !== StreamingPreferences.VDS_FORCE_SOFTWARE) {
             if (SystemProperties.isRunningXWayland) {

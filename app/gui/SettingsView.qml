@@ -11,6 +11,7 @@ import SdlGamepadKeyNavigation 1.0
 import SystemProperties 1.0
 import PyroWaveCalibrator 1.0
 import NetworkBuffers 1.0
+import DeckVoidTheme 1.0
 
 Flickable {
     id: settingsPage
@@ -36,8 +37,87 @@ Flickable {
 
     boundsBehavior: Flickable.OvershootBounds
 
-    contentWidth: settingsColumn1.width > settingsColumn2.width ? settingsColumn1.width : settingsColumn2.width
-    contentHeight: settingsColumn1.height > settingsColumn2.height ? settingsColumn1.height : settingsColumn2.height
+    // DeckVoid layout: category sidebar on the left, a fixed header with the
+    // category title and preset chips, and the selected category's cards below.
+    property string category: "stream"
+    readonly property int sidebarWidth: Theme.mouseMode ? 200 : 240
+    readonly property int headerHeight: Theme.mouseMode ? 76 : 92
+    readonly property var footerHints: [["‹›", qsTr("Adjust")], ["A", qsTr("Select")], ["B", qsTr("Back")]]
+    readonly property var categories: [
+        ["stream", qsTr("Stream")],
+        ["host", qsTr("Host display")],
+        ["controls", qsTr("Controls")],
+        ["haptics", qsTr("Haptics")],
+        ["overlay", qsTr("Overlay")],
+        ["about", qsTr("About")]
+    ]
+    function categoryTitle(key) {
+        for (var i = 0; i < categories.length; i++) {
+            if (categories[i][0] === key) return categories[i][1]
+        }
+        return ""
+    }
+    onCategoryChanged: contentY = -topMargin
+
+    // Presets set resolution, frame rate, codec and bitrate together, based on
+    // this device's own screen (display 0).
+    function nativeSize() {
+        SystemProperties.refreshDisplays()
+        var r = SystemProperties.getNativeResolution(0)
+        if (r.width === 0) return Qt.size(1280, 800)
+        return Qt.size(r.width, r.height)
+    }
+    function nativeFps() {
+        var hz = SystemProperties.getRefreshRate(0)
+        return hz > 0 ? hz : 60
+    }
+    function presetValues(name) {
+        var n = nativeSize()
+        var hz = nativeFps()
+        var v = { width: n.width, height: n.height, fps: hz, codec: StreamingPreferences.VCC_FORCE_HEVC, scale: 1.0 }
+        if (name === "battery") {
+            if (n.width * n.height > 1280 * 800) { v.width = 1280; v.height = 720 }
+            v.fps = 60
+            v.scale = 0.75
+        }
+        else if (name === "best") {
+            v.scale = 1.5
+        }
+        else if (name === "tv") {
+            v.width = 3840; v.height = 2160; v.fps = 60
+        }
+        v.bitrate = Math.round(Math.min(150000, StreamingPreferences.getDefaultBitrate(v.width, v.height, v.fps, false) * v.scale) / 500) * 500
+        return v
+    }
+    function activePreset() {
+        var names = ["battery", "balanced", "best", "tv"]
+        for (var i = 0; i < names.length; i++) {
+            var v = presetValues(names[i])
+            if (StreamingPreferences.width === v.width && StreamingPreferences.height === v.height &&
+                    StreamingPreferences.fps === v.fps && StreamingPreferences.bitrateKbps === v.bitrate &&
+                    StreamingPreferences.videoCodecConfig === v.codec) {
+                return names[i]
+            }
+        }
+        return ""
+    }
+    function applyPreset(name) {
+        var v = presetValues(name)
+        StreamingPreferences.width = v.width
+        StreamingPreferences.height = v.height
+        StreamingPreferences.fps = v.fps
+        StreamingPreferences.videoCodecConfig = v.codec
+        StreamingPreferences.enableYUV444 = false
+        StreamingPreferences.bitrateKbps = v.bitrate
+        StreamingPreferences.autoAdjustBitrate = (name !== "best")
+        StreamingPreferences.save()
+        // Rebuild the page so every control shows the new values.
+        stackView.replace(settingsPage, "qrc:/gui/SettingsView.qml", { "category": "stream" })
+    }
+
+    topMargin: headerHeight
+    contentWidth: width
+    contentHeight: settingsColumn1.height + settingsColumn2.height + 24
 
     ScrollBar.vertical: ScrollBar {
         anchors {
@@ -116,14 +196,17 @@ Flickable {
     Column {
         padding: 10
         id: settingsColumn1
-        width: settingsPage.width / 2
+        x: settingsPage.sidebarWidth + Theme.pageGutter - 10
+        width: settingsPage.width - x - Theme.pageGutter + 10
         spacing: 15
 
-        GroupBox {
+        DvGroupBox {
+            category: "stream"
+            selectedCategory: settingsPage.category
             id: basicSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Basic Settings") + "</font>"
+            title: qsTr("Basic Settings")
             font.pointSize: 12
 
             Column {
@@ -1916,10 +1999,12 @@ Flickable {
             }
         }
 
-        GroupBox {
+        DvGroupBox {
+            category: "overlay"
+            selectedCategory: settingsPage.category
             width: parent.width - (parent.leftPadding + parent.rightPadding)
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("VRR diagnostics") + "</font>"
+            title: qsTr("VRR diagnostics")
             font.pointSize: 12
 
             Column {
@@ -1973,12 +2058,14 @@ Flickable {
             }
         }
 
-        GroupBox {
+        DvGroupBox {
+            category: "stream"
+            selectedCategory: settingsPage.category
 
             id: audioSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Audio Settings") + "</font>"
+            title: qsTr("Audio Settings")
             font.pointSize: 12
 
             Column {
@@ -2067,11 +2154,13 @@ Flickable {
             }
         }
 
-        GroupBox {
+        DvGroupBox {
+            category: "host"
+            selectedCategory: settingsPage.category
             id: hostSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Host Settings") + "</font>"
+            title: qsTr("Host Settings")
             font.pointSize: 12
 
             Column {
@@ -2107,11 +2196,13 @@ Flickable {
             }
         }
 
-        GroupBox {
+        DvGroupBox {
+            category: "host"
+            selectedCategory: settingsPage.category
             id: apolloSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Apollo Host") + "</font>"
+            title: qsTr("Apollo Host")
             font.pointSize: 12
 
             Column {
@@ -2247,11 +2338,13 @@ Flickable {
             }
         }
 
-        GroupBox {
+        DvGroupBox {
+            category: "about"
+            selectedCategory: settingsPage.category
             id: uiSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("UI Settings") + "</font>"
+            title: qsTr("UI Settings")
             font.pointSize: 12
 
             Column {
@@ -2561,17 +2654,19 @@ Flickable {
 
     Column {
         padding: 10
-        rightPadding: 20
-        anchors.left: settingsColumn1.right
+        x: settingsColumn1.x
+        y: settingsColumn1.height
         id: settingsColumn2
-        width: settingsPage.width / 2
+        width: settingsColumn1.width
         spacing: 15
 
-        GroupBox {
+        DvGroupBox {
+            category: "controls"
+            selectedCategory: settingsPage.category
             id: inputSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Input Settings") + "</font>"
+            title: qsTr("Input Settings")
             font.pointSize: 12
 
             Column {
@@ -2715,11 +2810,13 @@ Flickable {
             }
         }
 
-        GroupBox {
+        DvGroupBox {
+            category: "controls"
+            selectedCategory: settingsPage.category
             id: gamepadSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Gamepad Settings") + "</font>"
+            title: qsTr("Gamepad Settings")
             font.pointSize: 12
 
             Column {
@@ -2892,6 +2989,19 @@ Flickable {
                         StreamingPreferences.steamControllerGrips = steamControllerGripsListModel.get(currentIndex).val
                     }
                 }
+
+            }
+        }
+
+        DvGroupBox {
+            id: hapticsSettingsGroupBox
+            category: "haptics"
+            selectedCategory: settingsPage.category
+            title: qsTr("Haptics and rumble")
+
+            Column {
+                anchors.fill: parent
+                spacing: 5
 
                 Label {
                     width: parent.width
@@ -3133,11 +3243,13 @@ Flickable {
             }
         }
 
-        GroupBox {
+        DvGroupBox {
+            category: "stream"
+            selectedCategory: settingsPage.category
             id: advancedSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Advanced Settings") + "</font>"
+            title: qsTr("Advanced Settings")
             font.pointSize: 12
 
             Column {
@@ -3309,6 +3421,19 @@ Flickable {
                     }
                 }
 
+            }
+        }
+
+        DvGroupBox {
+            id: overlaySettingsGroupBox
+            category: "overlay"
+            selectedCategory: settingsPage.category
+            title: qsTr("Overlay while streaming")
+
+            Column {
+                anchors.fill: parent
+                spacing: 5
+
                 CheckBox {
                     id: showPerformanceOverlay
                     width: parent.width
@@ -3342,6 +3467,134 @@ Flickable {
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Shows planned, submitted and displayed frame intervals in separate lanes during VRR streaming, so you can see where a stutter starts. Variation under 1 ms is drawn flat.") + "\n\n" +
                                   qsTr("You can toggle it at any time while streaming using Ctrl+Alt+Shift+F or Select+L1+R1+Y (Triangle).")
+                }
+            }
+        }
+    }
+
+    // Fixed chrome (not scrolled): parented to the Flickable itself, not its content.
+    Rectangle {
+        id: settingsSidebar
+        parent: settingsPage
+        z: 3
+        width: settingsPage.sidebarWidth
+        height: settingsPage.height
+        color: Theme.mouseMode ? Theme.surfaceMuted : Theme.background
+        Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.line }
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onWheel: (wheel) => wheel.accepted = true }
+
+        Column {
+            x: Theme.mouseMode ? 16 : 24
+            y: Theme.mouseMode ? 16 : 24
+            width: parent.width - 2 * x
+            spacing: Theme.mouseMode ? 4 : 8
+
+            Repeater {
+                model: settingsPage.categories
+                delegate: Rectangle {
+                    id: catItem
+                    readonly property bool selected: settingsPage.category === modelData[0]
+                    width: parent.width
+                    height: Theme.mouseMode ? 38 : 54
+                    radius: height / 2
+                    color: selected ? Theme.secondaryTint : (catArea.containsMouse ? Theme.surfaceMuted : "transparent")
+                    border.width: activeFocus ? 2 : 0
+                    border.color: Theme.accent
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: settingsPage.category = modelData[0]
+                    Keys.onEnterPressed: settingsPage.category = modelData[0]
+                    Keys.onSpacePressed: settingsPage.category = modelData[0]
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.mouseMode ? 16 : 22
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData[1]
+                        color: Theme.text
+                        font.family: Theme.bodyFont
+                        font.weight: catItem.selected ? Font.Bold : Font.DemiBold
+                        font.pixelSize: Theme.row
+                    }
+                    MouseArea {
+                        id: catArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: settingsPage.category = modelData[0]
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: settingsHeader
+        parent: settingsPage
+        z: 2
+        x: settingsPage.sidebarWidth
+        width: settingsPage.width - x
+        height: settingsPage.headerHeight
+        color: Theme.background
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons }
+
+        Text {
+            id: categoryHeading
+            anchors.left: parent.left
+            anchors.leftMargin: Theme.pageGutter
+            anchors.verticalCenter: parent.verticalCenter
+            text: settingsPage.categoryTitle(settingsPage.category)
+            color: Theme.text
+            font.family: Theme.headingFont
+            font.weight: Font.Bold
+            font.pixelSize: Theme.settingsTitle
+        }
+
+        // Presets (Stream only). Mouse: a segmented control; otherwise pill chips.
+        Rectangle {
+            visible: settingsPage.category === "stream"
+            anchors.right: parent.right
+            anchors.rightMargin: Theme.pageGutter
+            anchors.verticalCenter: parent.verticalCenter
+            width: presetRow.width + (Theme.mouseMode ? 8 : 0)
+            height: presetRow.height + (Theme.mouseMode ? 8 : 0)
+            radius: Theme.mouseMode ? 10 : 0
+            color: Theme.mouseMode ? Theme.chip : "transparent"
+
+            Row {
+                id: presetRow
+                anchors.centerIn: parent
+                spacing: Theme.mouseMode ? 2 : 10
+                readonly property string active: settingsPage.activePreset()
+                Repeater {
+                    model: [["battery", qsTr("Battery saver")], ["balanced", qsTr("Balanced")],
+                            ["best", qsTr("Best picture")], ["tv", qsTr("Docked TV")]]
+                    delegate: Rectangle {
+                        id: chip
+                        readonly property bool on: presetRow.active === modelData[0]
+                        width: chipText.implicitWidth + (Theme.mouseMode ? 24 : 36)
+                        height: Theme.mouseMode ? 30 : 46
+                        radius: Theme.mouseMode ? 7 : height / 2
+                        color: on ? (Theme.mouseMode ? Theme.surface : Theme.accentTint) : (Theme.mouseMode ? "transparent" : Theme.surface)
+                        border.width: Theme.mouseMode ? 0 : (activeFocus ? 2 : 1.5)
+                        border.color: activeFocus || on ? Theme.accent : Theme.lineStrong
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: settingsPage.applyPreset(modelData[0])
+                        Keys.onEnterPressed: settingsPage.applyPreset(modelData[0])
+                        Keys.onSpacePressed: settingsPage.applyPreset(modelData[0])
+                        Text {
+                            id: chipText
+                            anchors.centerIn: parent
+                            text: modelData[1]
+                            color: Theme.text
+                            font.family: Theme.bodyFont
+                            font.weight: chip.on ? Font.Bold : Font.DemiBold
+                            font.pixelSize: Theme.mouseMode ? Theme.px(16) : Theme.px(18)
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: settingsPage.applyPreset(modelData[0])
+                        }
+                    }
                 }
             }
         }

@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 2.2
+import DeckVoidTheme 1.0
 
 import ComputerManager 1.0
 import Session 1.0
@@ -41,7 +42,7 @@ Item {
             id: stageLabel
             height: stageSpinner.height
             text: stageText
-            font.pointSize: 20
+            font.family: Theme.headingFont; font.weight: Font.DemiBold; font.pixelSize: Theme.px(26); color: Theme.text
             verticalAlignment: Text.AlignVCenter
 
             wrapMode: Text.Wrap

@@ -30,6 +30,10 @@ FocusScope {
 
     // Controller footer hints for the selected card (read by main.qml).
     readonly property var footerHints: {
+        if (otpPairDialog.visible) {
+            return [["A", qsTr("Select")], ["X", otpPairDialog.showPassphrase ? qsTr("Hide passphrase") : qsTr("Show passphrase")],
+                    ["Y", qsTr("Pair now")], ["B", qsTr("Cancel")]]
+        }
         var hints = []
         var c = selectedCard
         if (currentIndex === count) {
@@ -68,6 +72,19 @@ FocusScope {
 
     StackView.onDeactivating: {
         ComputerManager.computerAddCompleted.disconnect(addComplete)
+    }
+
+    // Developer aid (DECKVOID_START_VIEW): open the pair dialog for the first PC.
+    function openPairPreview() {
+        if (count === 0) return
+        otpPairDialog.pcIndex = 0
+        otpPairDialog.open()
+    }
+    function openFirstHost() {
+        for (var i = 0; i < count; i++) {
+            var item = hostRepeater.itemAt(i)
+            if (item && item.card.status === "ready") { item.activate(); return }
+        }
     }
 
     function pairingComplete(error)
@@ -535,59 +552,337 @@ FocusScope {
         }
     }
 
+    // Pair with an Apollo one-time PIN (docs/design/mockups/*-pair).
+    // Mouse: a sheet at the top of the window. Touch: a number pad beside the form.
+    // Controller: A selects, X shows the passphrase, Y pairs now, B cancels.
     NavigableDialog {
         id: otpPairDialog
         property int pcIndex: -1
+        readonly property string pcName: {
+            var item = pcIndex >= 0 ? hostRepeater.itemAt(pcIndex) : null
+            return item ? item.card.name : ""
+        }
+        property bool showPassphrase: false
 
-        standardButtons: Dialog.Ok | Dialog.Cancel
-
-        onOpened: otpPinField.forceActiveFocus()
-        onClosed: {
-            otpPinField.clear()
-            otpPassphraseField.clear()
+        anchors.centerIn: Theme.mouseMode ? undefined : Overlay.overlay
+        x: Theme.mouseMode ? Math.round((parent.width - width) / 2) : 0
+        y: Theme.mouseMode ? 0 : 0
+        closePolicy: Popup.CloseOnEscape
+        padding: Theme.mouseMode ? 30 : 40
+        header: null
+        footer: null
+        Overlay.modal: Rectangle { color: Theme.scrim }
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.radiusDialog
+            // A sheet hangs from the top edge: square top corners.
+            Rectangle {
+                visible: Theme.mouseMode
+                width: parent.width; height: parent.radius
+                color: parent.color
+            }
         }
 
-        onAccepted: {
+        function tryPair() {
             if (!computerModel.isValidOtp(otpPinField.text, otpPassphraseField.text)) {
                 errorDialog.text = qsTr("Enter the 4-digit PIN and a passphrase of at least 4 characters.")
                 errorDialog.helpText = ""
                 errorDialog.open()
                 return
             }
-            computerModel.pairComputerWithOtp(pcIndex, otpPinField.text, otpPassphraseField.text)
+            var name = clientNameField.text.trim()
+            if (name !== "" && name !== StreamingPreferences.apolloClientName) {
+                StreamingPreferences.apolloClientName = name
+                StreamingPreferences.save()
+            }
+            var index = pcIndex
+            close()
+            computerModel.pairComputerWithOtp(index, otpPinField.text, otpPassphraseField.text)
             pairDialog.otp = true
             pairDialog.open()
         }
 
-        ColumnLayout {
-            Label {
-                text: qsTr("Pair with a one-time PIN")
-                font.bold: true
+        function pairClassic() {
+            var index = pcIndex
+            close()
+            var pin = computerModel.generatePinString()
+            computerModel.pairComputer(index, pin)
+            pairDialog.otp = false
+            pairDialog.pin = pin
+            pairDialog.open()
+        }
+
+        function typeDigit(d) {
+            if (otpPinField.text.length < 4) otpPinField.text += d
+            otpPinField.forceActiveFocus()
+        }
+
+        onOpened: {
+            showPassphrase = false
+            clientNameField.text = StreamingPreferences.apolloClientName
+            otpPinField.forceActiveFocus()
+        }
+        onClosed: {
+            otpPinField.clear()
+            otpPassphraseField.clear()
+        }
+
+        contentItem: FocusScope {
+            implicitWidth: pairRow.implicitWidth
+            implicitHeight: pairRow.implicitHeight
+            Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_F13) { otpPairDialog.showPassphrase = !otpPairDialog.showPassphrase; event.accepted = true }
+                else if (event.key === Qt.Key_F14) { otpPairDialog.tryPair(); event.accepted = true }
             }
 
-            Label {
-                Layout.maximumWidth: 420
-                wrapMode: Text.Wrap
-                text: qsTr("Create a one-time PIN and passphrase on the host (Apollo: web UI, PIN page). Enter them here within 3 minutes. Nothing needs to be typed on the host afterwards.")
-            }
+            Row {
+                id: pairRow
+                spacing: 40
 
-            TextField {
-                id: otpPinField
-                Layout.fillWidth: true
-                placeholderText: qsTr("4-digit PIN")
-                inputMethodHints: Qt.ImhDigitsOnly
-                validator: IntValidator { bottom: 0; top: 9999 }
-                maximumLength: 4
-                KeyNavigation.down: otpPassphraseField
-            }
+                Column {
+                    id: pairForm
+                    width: Theme.mouseMode ? 486 : 560
+                    spacing: 16
 
-            TextField {
-                id: otpPassphraseField
-                Layout.fillWidth: true
-                placeholderText: qsTr("Passphrase")
-                echoMode: TextInput.Password
-                Keys.onReturnPressed: otpPairDialog.accept()
-                Keys.onEnterPressed: otpPairDialog.accept()
+                    Text {
+                        width: parent.width
+                        text: qsTr("Pair with %1").arg(otpPairDialog.pcName)
+                        color: Theme.text
+                        font.family: Theme.headingFont
+                        font.weight: Font.Bold
+                        font.pixelSize: Theme.dialogTitle
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        width: parent.width
+                        text: qsTr("On the PC, open Apollo's web page, choose <b>Pair a device with a PIN</b>, and enter a passphrase. Type the PIN and passphrase it shows you here. They expire after 3 minutes.")
+                        textFormat: Text.StyledText
+                        wrapMode: Text.Wrap
+                        color: Theme.textSecondary
+                        font.family: Theme.bodyFont
+                        font.pixelSize: Theme.body
+                        lineHeight: 1.15
+                    }
+
+                    // Field label with the small orchid square
+                    component FieldLabel: Row {
+                        property string text
+                        spacing: 8
+                        Rectangle { width: 8; height: 8; radius: 2; color: Theme.secondary; anchors.verticalCenter: parent.verticalCenter }
+                        Text {
+                            text: parent.text
+                            color: Theme.textSecondary
+                            font.family: Theme.bodyFont
+                            font.weight: Font.Bold
+                            font.pixelSize: Theme.label
+                            font.letterSpacing: Theme.label * Theme.labelTracking / 10
+                            font.capitalization: Font.AllUppercase
+                        }
+                    }
+
+                    FieldLabel { text: qsTr("PIN") }
+                    Item {
+                        width: parent.width
+                        height: Theme.mouseMode ? 66 : 88
+                        TextField {
+                            id: otpPinField
+                            // Invisible input behind the four boxes; the boxes show its digits.
+                            anchors.fill: parent
+                            opacity: 0
+                            inputMethodHints: Qt.ImhDigitsOnly
+                            validator: RegularExpressionValidator { regularExpression: /[0-9]{0,4}/ }
+                            maximumLength: 4
+                            KeyNavigation.down: otpPassphraseField
+                            KeyNavigation.tab: otpPassphraseField
+                            Keys.onReturnPressed: otpPairDialog.tryPair()
+                            Keys.onEnterPressed: otpPairDialog.tryPair()
+                            onTextChanged: if (text.length === 4 && !Theme.touchMode) otpPassphraseField.forceActiveFocus()
+                        }
+                        Row {
+                            spacing: 12
+                            Repeater {
+                                model: 4
+                                delegate: Rectangle {
+                                    readonly property bool current: otpPinField.activeFocus && index === Math.min(otpPinField.text.length, 3)
+                                    width: Theme.mouseMode ? 60 : 76
+                                    height: parent.parent.height
+                                    radius: 18
+                                    color: Theme.surface
+                                    border.width: current ? 2.5 : 1.5
+                                    border.color: current ? Theme.accent : Theme.lineStrong
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: otpPinField.text.charAt(index)
+                                        color: Theme.text
+                                        font.family: Theme.headingFont
+                                        font.weight: Font.Bold
+                                        font.pixelSize: Theme.px(38)
+                                    }
+                                }
+                            }
+                        }
+                        MouseArea { anchors.fill: parent; onClicked: otpPinField.forceActiveFocus() }
+                    }
+
+                    FieldLabel { text: qsTr("Passphrase") }
+                    Row {
+                        width: parent.width
+                        spacing: 10
+                        TextField {
+                            id: otpPassphraseField
+                            width: parent.width - eye.width - parent.spacing
+                            height: Theme.mouseMode ? 42 : 56
+                            leftPadding: 18
+                            echoMode: otpPairDialog.showPassphrase ? TextInput.Normal : TextInput.Password
+                            placeholderText: qsTr("Passphrase")
+                            font.family: Theme.bodyFont
+                            font.pixelSize: Theme.row
+                            color: Theme.text
+                            background: Rectangle {
+                                radius: height / 2
+                                color: Theme.surface
+                                border.width: otpPassphraseField.activeFocus ? 2.5 : 1.5
+                                border.color: otpPassphraseField.activeFocus ? Theme.accent : Theme.lineStrong
+                            }
+                            KeyNavigation.up: otpPinField
+                            KeyNavigation.down: clientNameField
+                            KeyNavigation.tab: clientNameField
+                            Keys.onReturnPressed: otpPairDialog.tryPair()
+                            Keys.onEnterPressed: otpPairDialog.tryPair()
+                        }
+                        Rectangle {
+                            id: eye
+                            width: otpPassphraseField.height; height: width; radius: width / 2
+                            color: otpPairDialog.showPassphrase ? Theme.accentTint : Theme.surface
+                            border.width: 1.5
+                            border.color: Theme.lineStrong
+                            // Eye drawn with shapes: an almond outline and a pupil
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width * 0.46; height: width * 0.62; radius: height / 2
+                                color: "transparent"; border.width: 2; border.color: Theme.textStrong
+                                Rectangle { anchors.centerIn: parent; width: parent.height * 0.5; height: width; radius: width / 2; color: Theme.textStrong }
+                            }
+                            Rectangle {
+                                visible: otpPairDialog.showPassphrase
+                                anchors.centerIn: parent
+                                width: parent.width * 0.6; height: 2.5; radius: 1
+                                rotation: -35
+                                color: Theme.textStrong
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: otpPairDialog.showPassphrase = !otpPairDialog.showPassphrase
+                            }
+                        }
+                    }
+
+                    FieldLabel { text: qsTr("Name shown on the PC") }
+                    TextField {
+                        id: clientNameField
+                        width: parent.width
+                        height: Theme.mouseMode ? 42 : 56
+                        leftPadding: 18
+                        font.family: Theme.bodyFont
+                        font.pixelSize: Theme.row
+                        color: Theme.text
+                        background: Rectangle {
+                            radius: height / 2
+                            color: Theme.surface
+                            border.width: clientNameField.activeFocus ? 2.5 : 1.5
+                            border.color: clientNameField.activeFocus ? Theme.accent : Theme.lineStrong
+                        }
+                        KeyNavigation.up: otpPassphraseField
+                        Keys.onReturnPressed: otpPairDialog.tryPair()
+                        Keys.onEnterPressed: otpPairDialog.tryPair()
+                    }
+
+                    Item { width: 1; height: 4 }
+                    Item {
+                        width: parent.width
+                        height: pairButton.height
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Pair the classic way instead")
+                            font.family: Theme.bodyFont
+                            font.weight: Font.DemiBold
+                            font.pixelSize: Theme.body
+                            font.underline: true
+                            color: Theme.text
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: otpPairDialog.pairClassic()
+                            }
+                        }
+                        Row {
+                            anchors.right: parent.right
+                            spacing: 12
+                            DvButton {
+                                text: qsTr("Cancel")
+                                primary: false
+                                color: Theme.chip
+                                border.width: 0
+                                onClicked: otpPairDialog.close()
+                            }
+                            DvButton {
+                                id: pairButton
+                                text: qsTr("Pair")
+                                onClicked: otpPairDialog.tryPair()
+                            }
+                        }
+                    }
+                }
+
+                // Touch: number pad for the PIN
+                Column {
+                    visible: Theme.touchMode
+                    spacing: 14
+                    Row {
+                        spacing: 8
+                        Rectangle { width: 8; height: 8; radius: 2; color: Theme.secondary; anchors.verticalCenter: parent.verticalCenter }
+                        Text {
+                            text: qsTr("TAP TO ENTER THE PIN")
+                            color: Theme.textSecondary
+                            font.family: Theme.bodyFont
+                            font.weight: Font.Bold
+                            font.pixelSize: Theme.label
+                            font.letterSpacing: Theme.label * Theme.labelTracking / 10
+                        }
+                    }
+                    Grid {
+                        columns: 3
+                        spacing: 12
+                        Repeater {
+                            model: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"]
+                            delegate: Rectangle {
+                                width: 106; height: 82; radius: 20
+                                opacity: modelData !== "" ? 1 : 0
+                                enabled: modelData !== ""
+                                color: modelData === "⌫" ? Theme.chip : Theme.surfaceMuted
+                                border.width: 1
+                                border.color: Theme.line
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData
+                                    color: Theme.text
+                                    font.family: Theme.headingFont
+                                    font.weight: Font.Bold
+                                    font.pixelSize: 34
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        if (modelData === "⌫") otpPinField.text = otpPinField.text.slice(0, -1)
+                                        else otpPairDialog.typeDigit(modelData)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

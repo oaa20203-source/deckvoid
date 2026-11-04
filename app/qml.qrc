@@ -4,6 +4,7 @@
         <file>gui/Theme.qml</file>
         <file>gui/DvGlyph.qml</file>
         <file>gui/DvButton.qml</file>
+        <file>gui/DvGroupBox.qml</file>
         <file>gui/MonitorIcon.qml</file>
         <file>gui/HostCard.qml</file>
         <file>gui/AddPcCard.qml</file>
