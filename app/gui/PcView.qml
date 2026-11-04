@@ -24,9 +24,24 @@ FocusScope {
     readonly property int count: hostRepeater.count
     // At least 4 columns (the Deck's 1280 px); larger windows get more columns
     // instead of larger cards.
-    readonly property int maxCardWidth: Theme.mouseMode ? 330 : 300
-    readonly property int columns: Math.max(4, Math.ceil((width - 2 * Theme.pageGutter + Theme.gridGap) / (maxCardWidth + Theme.gridGap)))
+    // Host cards are wide and horizontal; the Add a PC card is narrower.
+    readonly property real contentWidth: width - 2 * Theme.pageGutter
+    readonly property real hostCardWidth: Math.min(600, contentWidth)
+    readonly property int columns: Math.max(1, Math.floor((contentWidth + Theme.gridGap) / (hostCardWidth + Theme.gridGap)))
     readonly property var selectedCard: currentIndex >= 0 && currentIndex < count ? hostRepeater.itemAt(currentIndex) : null
+
+    // Header fact cell and footer status (read by main.qml).
+    readonly property string headerFact: {
+        var online = 0
+        for (var i = 0; i < hostRepeater.count; i++) {
+            var it = hostRepeater.itemAt(i)
+            if (it && it.card.online) online++
+        }
+        var line1 = online === 1 ? qsTr("1 PC online") : qsTr("%1 PCs online").arg(online)
+        return line1 + "\n" + (StreamingPreferences.enableMdns ? qsTr("searching this network…") : qsTr("network search is off"))
+    }
+    readonly property string footerStatus: currentIndex === count ? qsTr("Add a PC selected")
+                                         : (selectedCard ? qsTr("%1 selected").arg(selectedCard.card.name) : "")
 
     // Controller footer hints for the selected card (read by main.qml).
     readonly property var footerHints: {
@@ -227,33 +242,26 @@ FocusScope {
             width: flick.width - 2 * Theme.pageGutter
             spacing: 24
 
-            Item {
-                width: parent.width
-                height: titleText.height
+            Row {
+                spacing: 24
                 Text {
                     id: titleText
-                    text: qsTr("Your PCs")
-                    color: Theme.text
-                    font.family: Theme.headingFont
-                    font.weight: Font.ExtraBold
-                    font.pixelSize: Theme.pageTitle
+                    text: qsTr("PCs on this network")
+                    color: Theme.ink
+                    font.family: Theme.sansFont
+                    font.weight: Font.Bold
+                    font.pixelSize: 40
+                    font.letterSpacing: -1.2
                 }
                 Text {
-                    anchors.right: parent.right
                     anchors.baseline: titleText.baseline
-                    color: Theme.textMuted
-                    font.family: Theme.bodyFont
+                    text: qsTr("Settings →")
+                    color: Theme.ink
+                    font.family: Theme.sansFont
                     font.weight: Font.Medium
-                    font.pixelSize: Theme.body
-                    text: {
-                        var online = 0
-                        for (var i = 0; i < hostRepeater.count; i++) {
-                            var it = hostRepeater.itemAt(i)
-                            if (it && it.card.online) online++
-                        }
-                        return (hostRepeater.count === 1 ? qsTr("1 PC") : qsTr("%1 PCs").arg(hostRepeater.count)) +
-                               " · " + qsTr("%1 online on this network").arg(online)
-                    }
+                    font.pixelSize: 15
+                    font.underline: true
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: showSettings() }
                 }
             }
 
@@ -276,17 +284,12 @@ FocusScope {
                 }
             }
 
-            Grid {
+            Flow {
                 id: grid
                 width: parent.width
-                columns: pcView.columns
-                columnSpacing: Theme.gridGap
-                rowSpacing: Theme.gridGap + 8
-                readonly property real cardWidth: (width - (columns - 1) * columnSpacing) / columns
-                // Every card is as tall as its content needs (see HostCard.preferredHeight).
-                readonly property real cardHeight: hostRepeater.count > 0 && hostRepeater.itemAt(0)
-                                                   ? Math.ceil(hostRepeater.itemAt(0).card.preferredHeight)
-                                                   : Math.round(cardWidth * 0.94)
+                spacing: Theme.gridGap
+                readonly property real cardWidth: pcView.hostCardWidth
+                readonly property real cardHeight: 236
 
                 Repeater {
                     id: hostRepeater
@@ -330,6 +333,8 @@ FocusScope {
                             wakeable: model.wakeable
                             hostKind: model.hostKind
                             runningApp: model.runningApp
+                            address: model.address
+                            number: index + 1
                             selected: pcView.currentIndex === index && pcView.activeFocus
                             onSelectRequested: pcView.currentIndex = index
                             onActivated: hostItem.activate()
@@ -410,7 +415,7 @@ FocusScope {
 
                 AddPcCard {
                     id: addCard
-                    width: grid.cardWidth
+                    width: Math.min(260, grid.width)
                     height: grid.cardHeight
                     selected: pcView.currentIndex === hostRepeater.count && pcView.activeFocus
                     onSelectRequested: pcView.currentIndex = hostRepeater.count
@@ -424,7 +429,7 @@ FocusScope {
                 readonly property var item: pcView.selectedCard ? pcView.selectedCard
                                           : (hostRepeater.count > 0 ? hostRepeater.itemAt(0) : null)
                 readonly property var info: item
-                visible: item !== null && item.card.online
+                visible: false
                 width: parent.width
                 height: detailsRow.height + 48
                 radius: Theme.radiusCard

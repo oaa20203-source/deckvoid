@@ -2,36 +2,32 @@ import QtQuick 2.0
 import QtQuick.Controls 2.2
 import DeckVoidTheme 1.0
 
-// App tile: a white rounded card; focused (or hovered with a mouse) it lifts
-// slightly with a soft mango glow, matching the host cards.
+// App tile: a flat kit card (docs/design/KIT.md) with a focus outline.
 ItemDelegate {
     id: tile
     property GridView grid
     readonly property bool lifted: highlighted || (Theme.mouseMode && hovered)
 
     highlighted: grid.activeFocus && grid.currentItem === this
-    transform: Translate { y: tile.lifted ? (Theme.mouseMode ? -4 : -6) : 0 }
-    scale: tile.highlighted && Theme.controllerMode ? 1.04 : 1.0
-    Behavior on scale { NumberAnimation { duration: 120 } }
 
+    // Flat kit card; focus is a 2 px ink outline with a 4 px gap. No lift, no glow.
     background: Item {
         Rectangle {
-            // glow
             anchors.fill: card
-            anchors.margins: -4
+            anchors.margins: -6
             radius: card.radius + 4
             color: "transparent"
-            border.width: 4
-            border.color: Theme.glow
+            border.width: 2
+            border.color: Theme.ink
             visible: tile.lifted
         }
         Rectangle {
             id: card
             anchors.fill: parent
-            radius: 22
-            color: Theme.surface
-            border.width: tile.lifted ? 1.5 : 1
-            border.color: tile.lifted ? Theme.accent : Theme.line
+            radius: Theme.radiusCard
+            color: Theme.bone
+            border.width: 1
+            border.color: Theme.cardRule
         }
     }
 

@@ -1,71 +1,71 @@
-// The dashed "Add a PC" card at the end of the Hosts grid.
+// The "Add a PC" card at the end of the Hosts row (docs/design/KIT.md): a flat
+// card with an ash block, a red MANUAL label, a title and a mono caption.
 import QtQuick
-import QtQuick.Shapes
 import DeckVoidTheme 1.0
 
 Item {
     id: card
     property bool selected: false
-    readonly property bool lifted: (Theme.controllerMode && selected) || (Theme.mouseMode && hover.hovered)
+    readonly property bool lifted: (!Theme.mouseMode && selected) || (Theme.mouseMode && hover.hovered)
     signal activated()
     signal selectRequested()
 
-    transform: Translate { y: card.lifted ? (Theme.controllerMode ? -6 : -4) : 0
-                           Behavior on y { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } } }
-    scale: Theme.controllerMode && card.lifted ? 1.06 : 1.0
-    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
-
+    // Focus: 2 px ink outline, 4 px offset
     Rectangle {
-        anchors.fill: parent
-        anchors.margins: -4
+        anchors.fill: body
+        anchors.margins: -6
         radius: Theme.radiusCard + 4
         color: "transparent"
-        border.width: 4
-        border.color: Theme.glow
+        border.width: 2
+        border.color: Theme.ink
         visible: card.lifted
     }
 
-    Shape {
+    Rectangle {
+        id: body
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
-        ShapePath {
-            strokeColor: card.lifted ? Theme.accent : Theme.dashed
-            strokeWidth: 2.5
-            strokeStyle: ShapePath.DashLine
-            dashPattern: [3, 3]
-            fillColor: card.lifted ? Theme.accentTint : "transparent"
-            PathRectangle {
-                x: 1.25; y: 1.25
-                width: card.width - 2.5; height: card.height - 2.5
-                radius: Theme.radiusCard
+        radius: Theme.radiusCard
+        color: Theme.bone
+        border.width: 1
+        border.color: Theme.cardRule
+        clip: true
+
+        Rectangle {
+            id: block
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }
+            height: Math.round(parent.height * 0.5)
+            color: Theme.ash
+            Text {
+                anchors { left: parent.left; bottom: parent.bottom; leftMargin: 18; bottomMargin: 6 }
+                text: "+"
+                color: Theme.ink
+                font.family: Theme.sansFont
+                font.weight: Font.Light
+                font.pixelSize: 96
+                lineHeight: 0.8
             }
         }
-    }
 
-    Column {
-        anchors.centerIn: parent
-        spacing: 10
-        Item {
-            width: 48; height: 48
-            anchors.horizontalCenter: parent.horizontalCenter
-            Rectangle { anchors.centerIn: parent; width: 44; height: 5; radius: 2; color: Theme.accentDeep }
-            Rectangle { anchors.centerIn: parent; width: 5; height: 44; radius: 2; color: Theme.accentDeep }
+        Column {
+            anchors { left: parent.left; right: parent.right; top: block.bottom; margins: 18 }
+            spacing: 0
+            Rectangle {
+                width: manualText.implicitWidth + 14; height: 20
+                color: Theme.vermilion
+                Text { id: manualText; anchors.centerIn: parent; text: qsTr("MANUAL"); color: Theme.bone; font.family: Theme.monoFont; font.pixelSize: 11 }
+            }
+            Item { width: 1; height: 10 }
+            Text { text: qsTr("Add a PC"); color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Bold; font.pixelSize: 20; font.letterSpacing: -0.4 }
+            Item { width: 1; height: 4 }
+            Text { width: parent.width; text: qsTr("by name or IP address"); color: Theme.stone; font.family: Theme.monoFont; font.pixelSize: 12; elide: Text.ElideRight }
         }
+
         Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: qsTr("Add a PC")
-            color: Theme.text
-            font.family: Theme.headingFont
-            font.weight: Font.Bold
-            font.pixelSize: Theme.cardTitle
-        }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: qsTr("By IP address")
-            color: Theme.textMuted
-            font.family: Theme.bodyFont
-            font.weight: Font.Medium
-            font.pixelSize: Theme.meta
+            anchors { right: parent.right; bottom: parent.bottom; margins: 16 }
+            text: "→"
+            color: Theme.ink
+            font.family: Theme.sansFont
+            font.pixelSize: 18
         }
     }
 

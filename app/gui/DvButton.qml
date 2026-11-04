@@ -1,4 +1,4 @@
-// Pill button: filled mango (primary) or outlined. Text is always the dark text colour.
+// Kit button: vermilion fill with bone text (primary), or a plain outlined button.
 import QtQuick
 import DeckVoidTheme 1.0
 
@@ -11,10 +11,10 @@ Rectangle {
 
     implicitHeight: Theme.mouseMode ? 36 : 48
     implicitWidth: label.implicitWidth + 48
-    radius: height / 2
+    radius: Theme.radiusControl
     color: primary ? (area.pressed ? Qt.darker(Theme.accent, 1.06) : Theme.accent) : Theme.surface
     border.width: primary ? 0 : 1.5
-    border.color: Theme.lineStrong
+    border.color: Theme.cardRule
 
     Row {
         anchors.centerIn: parent
@@ -22,10 +22,10 @@ Rectangle {
         Text {
             id: label
             text: button.text
-            color: Theme.text
+            color: button.primary ? Theme.accentText : Theme.text
             font.family: Theme.bodyFont
-            font.weight: Font.Bold
-            font.pixelSize: Theme.px(18)
+            font.weight: Font.Medium
+            font.pixelSize: Theme.px(17)
             anchors.verticalCenter: parent.verticalCenter
         }
         Rectangle {

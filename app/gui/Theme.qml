@@ -1,4 +1,4 @@
-// DeckVoid light theme. Values come from docs/design/tokens.json; see docs/design/DESIGN.md.
+// DeckVoid theme, following the design kit in docs/design/KIT.md.
 pragma Singleton
 import QtQuick
 import InputMode 1.0
@@ -10,40 +10,60 @@ QtObject {
     readonly property bool mouseMode: inputMode === "mouse"
     readonly property bool touchMode: inputMode === "touch"
 
-    // Colours. Accent, secondary and status colours are fills, edges, dots and rings
-    // only: they are too light to read as text on white.
-    readonly property color background: "#FFFFFF"
-    readonly property color surface: "#FFFFFF"
-    readonly property color surfaceMuted: "#FAF8F5"
-    readonly property color line: "#EEEAE4"
-    readonly property color lineStrong: "#E6DFD4"
-    readonly property color dashed: "#E2D6C2"
-    readonly property color chip: "#F3EFE8"
-    readonly property color bumper: "#F1EADD"
-    readonly property color text: "#2A2420"
-    readonly property color textStrong: "#3E352F"
-    readonly property color textSecondary: "#5A4E45"
-    readonly property color textMuted: "#6B5F55"
-    readonly property color textFaint: "#8A7D70"
-    readonly property color accent: "#F7B267"
-    readonly property color accentTint: "#FEF0DE"
-    readonly property color accentDeep: "#B36A1C"
-    readonly property color secondary: "#D7A6D9"
-    readonly property color secondaryTint: Qt.rgba(215/255, 166/255, 217/255, 0.28)
-    readonly property color statusReady: "#9FD3A8"
-    readonly property color statusNeedsPairing: "#F7B267"
-    readonly property color statusAsleep: "#DDD3C3"
-    readonly property color glyphFill: "#2A2420"
-    readonly property color glyphText: "#FFFFFF"
-    readonly property color scrim: Qt.rgba(60/255, 45/255, 30/255, 0.38)
-    readonly property color shadow: Qt.rgba(90/255, 60/255, 30/255, 0.22)
-    readonly property color glow: Qt.rgba(247/255, 178/255, 103/255, 0.20)
+    // Kit colours (docs/design/KIT.md). Paper is the main surface; ink is text;
+    // vermilion is the main action; marigold marks "running"; moss is the PC block.
+    readonly property color paper: "#F1EEE9"
+    readonly property color bone: "#FAF9F6"
+    readonly property color ash: "#EAE9E8"
+    readonly property color ink: "#111111"
+    readonly property color soot: "#282625"
+    readonly property color stone: "#6E6965"
+    readonly property color vermilion: "#E05D4E"
+    readonly property color marigold: "#F4C33F"
+    readonly property color cobalt: "#3B6FD6"
+    readonly property color moss: "#5F733C"
+    readonly property color olive: "#454539"
+    readonly property color rule: Qt.rgba(17/255, 17/255, 17/255, 0.18)
+    readonly property color cardRule: Qt.rgba(17/255, 17/255, 17/255, 0.25)
 
-    // Type: controller sizes; mouse x0.86, touch x0.96.
-    readonly property FontLoader urbanistLoader: FontLoader { source: "qrc:/res/fonts/Urbanist.ttf" }
-    readonly property FontLoader quicksandLoader: FontLoader { source: "qrc:/res/fonts/Quicksand.ttf" }
-    readonly property string headingFont: urbanistLoader.status === FontLoader.Ready ? urbanistLoader.name : "sans-serif"
-    readonly property string bodyFont: quicksandLoader.status === FontLoader.Ready ? quicksandLoader.name : "sans-serif"
+    // Older role names, mapped onto the kit so every existing screen follows it.
+    readonly property color background: paper
+    readonly property color surface: bone
+    readonly property color surfaceMuted: ash
+    readonly property color line: "#D6D2CB"
+    readonly property color lineStrong: "#BDB7AE"
+    readonly property color dashed: "#BDB7AE"
+    readonly property color chip: ash
+    readonly property color bumper: "#E2DFDA"
+    readonly property color text: ink
+    readonly property color textStrong: ink
+    readonly property color textSecondary: "#3A3734"
+    readonly property color textMuted: stone
+    readonly property color textFaint: "#8A857F"
+    readonly property color accent: vermilion
+    readonly property color accentText: bone   // text on an accent fill
+    readonly property color accentTint: "#F6DAD5"
+    readonly property color accentDeep: "#B8463A"
+    readonly property color secondary: moss
+    readonly property color secondaryTint: Qt.rgba(95/255, 115/255, 60/255, 0.18)
+    readonly property color statusReady: moss
+    readonly property color statusNeedsPairing: vermilion
+    readonly property color statusAsleep: "#C9C4BC"
+    readonly property color glyphFill: ink
+    readonly property color glyphText: bone
+    readonly property color scrim: Qt.rgba(17/255, 17/255, 17/255, 0.40)
+    readonly property color shadow: "transparent"   // the kit has no shadows
+    readonly property color glow: "transparent"
+
+    // Type: IBM Plex Sans for everything, IBM Plex Mono for facts (addresses,
+    // versions, labels, controller hints). Controller sizes; mouse x0.86, touch x0.96.
+    readonly property FontLoader plexSansLoader: FontLoader { source: "qrc:/res/fonts/IBMPlexSans.ttf" }
+    readonly property FontLoader plexMonoLoader: FontLoader { source: "qrc:/res/fonts/IBMPlexMono-Regular.ttf" }
+    readonly property FontLoader plexMonoMediumLoader: FontLoader { source: "qrc:/res/fonts/IBMPlexMono-Medium.ttf" }
+    readonly property string sansFont: plexSansLoader.status === FontLoader.Ready ? plexSansLoader.name : "sans-serif"
+    readonly property string monoFont: plexMonoLoader.status === FontLoader.Ready ? plexMonoLoader.name : "monospace"
+    readonly property string headingFont: sansFont
+    readonly property string bodyFont: sansFont
     readonly property real typeScale: mouseMode ? 0.86 : (touchMode ? 0.96 : 1.0)
     function px(size) { return Math.round(size * typeScale) }
 
@@ -59,9 +79,12 @@ QtObject {
     readonly property real labelTracking: 0.6
 
     // Shape and spacing
-    readonly property int radiusCard: 26
-    readonly property int radiusDialog: 30
-    readonly property int radiusControl: mouseMode ? 8 : 22
+    // The kit allows 4 px at most, on buttons and cards only.
+    readonly property int radiusCard: 4
+    readonly property int radiusDialog: 4
+    readonly property int radiusControl: 4
+    readonly property int headerHeight: 64
+    readonly property int footerHeight: 44
     readonly property int minHitTarget: mouseMode ? 28 : 44
     readonly property int pageGutter: controllerMode ? 40 : 32
     readonly property int gridGap: 20

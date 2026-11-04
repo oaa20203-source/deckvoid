@@ -287,237 +287,162 @@ ApplicationWindow {
         navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
     }
 
+    // Header: a row of ruled cells (docs/design/KIT.md, "Fact header"):
+    // name, the PCs / Settings tabs, and one cell of facts from the current page.
     header: Rectangle {
         id: toolBar
-        height: Theme.mouseMode ? 64 : 76
-        color: Theme.mouseMode ? Theme.surfaceMuted : Theme.background
+        height: Theme.headerHeight
+        color: Theme.paper
+        readonly property string fact: stackView.currentItem && stackView.currentItem.headerFact !== undefined
+                                       ? stackView.currentItem.headerFact : ""
 
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.line }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.ink }
 
-        // Left: back (inside a host's apps) and the DeckVoid logo
         Row {
-            anchors.left: parent.left
-            anchors.leftMargin: Theme.pageGutter
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 14
+            id: cells
+            height: parent.height - 1
 
-            Rectangle {
-                id: backButton
-                visible: stackView.depth > 1 && !window.settingsTab
-                width: 40; height: 40; radius: 20
-                color: backArea.containsMouse ? Theme.chip : "transparent"
-                anchors.verticalCenter: parent.verticalCenter
-                Text { anchors.centerIn: parent; text: "‹"; color: Theme.text; font.pixelSize: 30; font.weight: Font.Bold; anchors.verticalCenterOffset: -2 }
-                MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: goBack() }
+            Item {
+                width: 180; height: parent.height
+                Text {
+                    anchors.left: parent.left; anchors.leftMargin: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "DeckVoid"
+                    color: Theme.ink
+                    font.family: Theme.sansFont
+                    font.weight: Font.Bold
+                    font.pixelSize: 20
+                    font.letterSpacing: -0.4
+                }
+                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.ink }
             }
 
-            // Logo: mango ring with an orchid dot
-            Rectangle {
-                width: 34; height: 34; radius: 17
-                color: "transparent"
-                border.color: Theme.accent; border.width: 4
-                anchors.verticalCenter: parent.verticalCenter
-                Rectangle { anchors.centerIn: parent; width: 13; height: 13; radius: 7; color: Theme.secondary }
-            }
-            Text {
-                text: "DeckVoid"
-                color: Theme.text
-                font.family: Theme.headingFont
-                font.weight: Font.ExtraBold
-                font.pixelSize: Theme.mouseMode ? 24 : 28
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
-
-        // Centre: Hosts / Settings
-        Row {
-            id: controllerTabs
-            visible: Theme.controllerMode
-            anchors.centerIn: parent
-            spacing: 18
-            DvGlyph { glyph: "L1"; anchors.verticalCenter: parent.verticalCenter }
             Repeater {
-                model: [qsTr("Hosts"), qsTr("Settings")]
-                delegate: Item {
+                model: [qsTr("PCs"), qsTr("Settings")]
+                delegate: Rectangle {
                     readonly property bool active: index === 1 ? window.settingsTab : !window.settingsTab
-                    width: tabText.implicitWidth + 36
-                    height: toolBar.height
+                    width: 120; height: cells.height
+                    color: active ? Theme.ink : (tabArea.containsMouse ? Theme.ash : "transparent")
                     Text {
-                        id: tabText
-                        anchors.centerIn: parent
+                        anchors.left: parent.left; anchors.leftMargin: 20
+                        anchors.verticalCenter: parent.verticalCenter
                         text: modelData
-                        color: parent.active ? Theme.text : Theme.textMuted
-                        font.family: Theme.bodyFont
-                        font.weight: parent.active ? Font.Bold : Font.DemiBold
-                        font.pixelSize: Theme.tab
+                        color: parent.active ? Theme.paper : Theme.ink
+                        font.family: Theme.sansFont
+                        font.weight: Font.Medium
+                        font.pixelSize: 15
                     }
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width; height: 3; radius: 1.5
-                        color: Theme.secondary
-                        visible: parent.active
-                    }
-                    MouseArea { anchors.fill: parent; onClicked: index === 1 ? showSettings() : showHosts() }
+                    Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.ink }
+                    MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: index === 1 ? showSettings() : showHosts() }
                 }
             }
-            DvGlyph { glyph: "R1"; anchors.verticalCenter: parent.verticalCenter }
+
+            Item {
+                visible: toolBar.fact !== ""
+                width: 260; height: cells.height
+                Text {
+                    anchors.left: parent.left; anchors.leftMargin: 20
+                    anchors.right: parent.right; anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: toolBar.fact
+                    color: "#55514C"
+                    font.family: Theme.monoFont
+                    font.pixelSize: 12
+                    lineHeight: 1.15
+                    elide: Text.ElideRight
+                    maximumLineCount: 2
+                }
+                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.ink }
+            }
         }
 
+        // Right: update notice as its own cell
         Rectangle {
-            id: segmentedTabs
-            visible: !Theme.controllerMode
-            anchors.centerIn: parent
-            width: segRow.width + 8; height: Theme.mouseMode ? 40 : 52
-            radius: Theme.mouseMode ? 10 : 18
-            color: Theme.chip
-            Row {
-                id: segRow
-                anchors.centerIn: parent
-                Repeater {
-                    model: [qsTr("Hosts"), qsTr("Settings")]
-                    delegate: Rectangle {
-                        readonly property bool active: index === 1 ? window.settingsTab : !window.settingsTab
-                        width: segText.implicitWidth + (Theme.mouseMode ? 52 : 76)
-                        height: segmentedTabs.height - 8
-                        radius: segmentedTabs.radius - 3
-                        color: active ? Theme.surface : "transparent"
-                        Text {
-                            id: segText
-                            anchors.centerIn: parent
-                            text: modelData
-                            color: parent.active ? Theme.text : Theme.textMuted
-                            font.family: Theme.bodyFont
-                            font.weight: Font.Bold
-                            font.pixelSize: Theme.tab
-                        }
-                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: index === 1 ? showSettings() : showHosts() }
+            id: updateButton
+            property string browserUrl: ""
+            property string updateVersion: ""
+            visible: false
+            anchors.right: parent.right
+            height: parent.height - 1
+            width: updateText.implicitWidth + 40
+            color: updateArea.containsMouse ? Theme.ash : "transparent"
+            Rectangle { anchors.left: parent.left; width: 1; height: parent.height; color: Theme.ink }
+            Text { id: updateText; anchors.centerIn: parent; text: qsTr("Update available →"); color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Medium; font.pixelSize: 14 }
+            MouseArea {
+                id: updateArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: function(mouse) {
+                    if (mouse.button === Qt.RightButton) {
+                        AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
+                        updateButton.visible = false
+                    }
+                    else if (SystemProperties.hasBrowser) {
+                        Qt.openUrlExternally(updateButton.browserUrl)
+                        AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
+                        updateButton.visible = false
                     }
                 }
             }
-        }
+            ToolTip.visible: updateArea.containsMouse
+            ToolTip.text: qsTr("Update available for DeckVoid: Version %1").arg(updateVersion)
 
-        // Right: update notice, help, add PC
-        Row {
-            anchors.right: parent.right
-            anchors.rightMargin: Theme.pageGutter
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 12
-
-            Rectangle {
-                id: updateButton
-                property string browserUrl: ""
-                property string updateVersion: ""
-                visible: false
-                height: 34; width: updateText.implicitWidth + 28; radius: 17
-                color: Theme.accentTint
-                border.color: Theme.accent
-                anchors.verticalCenter: parent.verticalCenter
-                Text { id: updateText; anchors.centerIn: parent; text: qsTr("Update available"); color: Theme.text; font.family: Theme.bodyFont; font.weight: Font.Bold; font.pixelSize: 14 }
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onClicked: function(mouse) {
-                        if (mouse.button === Qt.RightButton) {
-                            AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
-                            updateButton.visible = false
-                        }
-                        else if (SystemProperties.hasBrowser) {
-                            Qt.openUrlExternally(updateButton.browserUrl)
-                            AutoUpdateChecker.dismissUpdate(updateButton.updateVersion)
-                            updateButton.visible = false
-                        }
-                    }
-                }
-                ToolTip.visible: updateHover.hovered
-                ToolTip.text: qsTr("Update available for DeckVoid: Version %1").arg(updateVersion)
-                HoverHandler { id: updateHover }
-
-                function updateAvailable(version, url) {
-                    updateButton.browserUrl = url
-                    updateButton.updateVersion = version
-                    updateButton.visible = true
-                }
-                Connections {
-                    target: AutoUpdateChecker
-                    function onNotifyPrereleasesChanged() {
-                        updateButton.visible = false
-                        AutoUpdateChecker.start()
-                    }
-                }
-                Component.onCompleted: {
-                    AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
+            function updateAvailable(version, url) {
+                updateButton.browserUrl = url
+                updateButton.updateVersion = version
+                updateButton.visible = true
+            }
+            Connections {
+                target: AutoUpdateChecker
+                function onNotifyPrereleasesChanged() {
+                    updateButton.visible = false
                     AutoUpdateChecker.start()
                 }
             }
-
-            Rectangle {
-                id: helpButton
-                visible: Theme.mouseMode && SystemProperties.hasBrowser
-                width: 36; height: 36; radius: 18
-                color: helpArea.containsMouse ? Theme.chip : "transparent"
-                border.color: Theme.lineStrong; border.width: 1
-                anchors.verticalCenter: parent.verticalCenter
-                Text { anchors.centerIn: parent; text: "?"; color: Theme.textSecondary; font.family: Theme.bodyFont; font.weight: Font.Bold; font.pixelSize: 17 }
-                MouseArea { id: helpArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: helpButton.open() }
-                function open() { Qt.openUrlExternally("https://github.com/oaa20203-source/deckvoid#readme") }
-                Shortcut { sequence: StandardKey.HelpContents; onActivated: helpButton.open() }
-            }
-
-            DvButton {
-                id: addPcButton
-                visible: Theme.mouseMode && stackView.currentItem instanceof PcView
-                text: qsTr("+  Add PC")
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked: addPcDialog.open()
-            }
-
-            Rectangle {
-                visible: Theme.touchMode && stackView.currentItem instanceof PcView
-                width: 56; height: 56; radius: 28
-                color: Theme.accent
-                anchors.verticalCenter: parent.verticalCenter
-                Item {
-                    anchors.centerIn: parent; width: 24; height: 24
-                    Rectangle { anchors.centerIn: parent; width: 24; height: 3.5; radius: 2; color: Theme.text }
-                    Rectangle { anchors.centerIn: parent; width: 3.5; height: 24; radius: 2; color: Theme.text }
-                }
-                MouseArea { anchors.fill: parent; onClicked: addPcDialog.open() }
+            Component.onCompleted: {
+                AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
+                AutoUpdateChecker.start()
             }
         }
 
         Shortcut { sequence: StandardKey.New; onActivated: addPcDialog.open() }
         Shortcut { sequence: StandardKey.Preferences; onActivated: showSettings() }
+        Shortcut { sequence: StandardKey.HelpContents; onActivated: Qt.openUrlExternally("https://github.com/oaa20203-source/deckvoid#readme") }
     }
 
-    // Controller button hints (controller mode only). Pages provide footerHints:
-    // a list of [glyph, label] pairs for the focused item.
+    // Footer (controller mode): what is selected on the left, button hints in mono
+    // on the right. Pages provide footerHints ([glyph, label] pairs) and footerStatus.
     footer: Rectangle {
+        id: hintBar
         readonly property var hints: stackView.currentItem && stackView.currentItem.footerHints !== undefined
                                      ? stackView.currentItem.footerHints : []
+        readonly property string status: stackView.currentItem && stackView.currentItem.footerStatus !== undefined
+                                         ? stackView.currentItem.footerStatus : ""
         visible: Theme.controllerMode && hints.length > 0
-        height: visible ? 66 : 0
-        color: Theme.surfaceMuted
-        Rectangle { width: parent.width; height: 1; color: Theme.line }
+        height: visible ? Theme.footerHeight : 0
+        color: Theme.paper
+        Rectangle { width: parent.width; height: 1; color: Theme.ink }
+        Text {
+            anchors.left: parent.left; anchors.leftMargin: 32
+            anchors.verticalCenter: parent.verticalCenter
+            text: hintBar.status
+            color: "#55514C"
+            font.family: Theme.monoFont
+            font.pixelSize: 13
+        }
         Row {
             anchors.right: parent.right
-            anchors.rightMargin: Theme.pageGutter
+            anchors.rightMargin: 32
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 34
+            spacing: 28
             Repeater {
-                model: parent.parent.hints
+                model: hintBar.hints
                 delegate: Row {
-                    spacing: 12
-                    DvGlyph { glyph: modelData[0]; anchors.verticalCenter: parent.verticalCenter }
-                    Text {
-                        text: modelData[1]
-                        color: Theme.text
-                        font.family: Theme.bodyFont
-                        font.weight: Font.DemiBold
-                        font.pixelSize: Theme.row
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
+                    spacing: 7
+                    Text { text: modelData[0]; color: Theme.ink; font.family: Theme.monoFont; font.weight: Font.Medium; font.pixelSize: 13 }
+                    Text { text: modelData[1].toLowerCase(); color: "#55514C"; font.family: Theme.monoFont; font.pixelSize: 13 }
                 }
             }
         }

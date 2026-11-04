@@ -20,6 +20,10 @@
         <file>res/fonts/Quicksand.ttf</file>
         <file>res/fonts/Urbanist-OFL.txt</file>
         <file>res/fonts/Quicksand-OFL.txt</file>
+        <file>res/fonts/IBMPlexSans.ttf</file>
+        <file>res/fonts/IBMPlexMono-Regular.ttf</file>
+        <file>res/fonts/IBMPlexMono-Medium.ttf</file>
+        <file>res/fonts/IBMPlex-OFL.txt</file>
         <file>res/settings.svg</file>
         <file>res/arrow_left.svg</file>
         <file>res/question_mark.svg</file>

@@ -31,7 +31,42 @@ CenteredGridView {
     topMargin: 28
     minMargin: Theme.pageGutter
     bottomMargin: 5
-    cellWidth: 230; cellHeight: 297;
+    cellWidth: 260; cellHeight: 440;
+
+    // Header fact cell, footer status and hints (read by main.qml).
+    readonly property string headerFact: objectName + "\n" + (count === 1 ? qsTr("1 app") : qsTr("%1 apps").arg(count))
+    readonly property string footerStatus: currentItem ? qsTr("%1 selected").arg(currentItem.appName) : ""
+    readonly property var footerHints: [["A", currentItem && currentItem.appRunning ? qsTr("Resume") : qsTr("Launch")],
+                                        ["B", qsTr("Back")], ["≡", qsTr("Options")]]
+
+    // Title row: back link and the page title (docs/design/KIT.md)
+    header: Item {
+        width: appGrid.width - appGrid.leftMargin - appGrid.rightMargin
+        height: 92
+        Row {
+            y: 4
+            spacing: 24
+            Text {
+                anchors.baseline: pageTitle.baseline
+                text: qsTr("← PCs")
+                color: Theme.ink
+                font.family: Theme.sansFont
+                font.weight: Font.Medium
+                font.pixelSize: 15
+                font.underline: true
+                MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: stackView.pop() }
+            }
+            Text {
+                id: pageTitle
+                text: qsTr("Apps on %1").arg(appGrid.objectName)
+                color: Theme.ink
+                font.family: Theme.sansFont
+                font.weight: Font.Bold
+                font.pixelSize: 40
+                font.letterSpacing: -1.2
+            }
+        }
+    }
 
     function computerLost()
     {
@@ -85,7 +120,10 @@ import AppModel 1.0; AppModel {}', parent, '')
     model: appModel
 
     delegate: NavigableItemDelegate {
-        width: 220; height: 287;
+        width: 240; height: 420;
+        padding: 0
+        readonly property string appName: model.name
+        readonly property bool appRunning: model.running
         objectName: model.sleepAction ? "hostSleepTile" : ""
         grid: appGrid
 
@@ -99,8 +137,10 @@ import AppModel 1.0; AppModel {}', parent, '')
             property bool isPlaceholder: false
 
             id: appIcon
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 10
+            x: 1; y: 1
+            width: parent.width - 2
+            height: 300
+            fillMode: Image.PreserveAspectCrop
             source: model.boxart
 
             onSourceSizeChanged: {
@@ -120,8 +160,6 @@ import AppModel 1.0; AppModel {}', parent, '')
                     isPlaceholder = false
                 }
 
-                width = 200
-                height = 267
             }
 
             // Display a tooltip with the full name if it's truncated
@@ -131,66 +169,32 @@ import AppModel 1.0; AppModel {}', parent, '')
             ToolTip.visible: (parent.hovered || parent.highlighted) && (!appNameText || appNameText.truncated)
         }
 
-        Loader {
-            active: model.running
-            asynchronous: true
+        // Placeholder art: the app's name set large on an ash block
+        Rectangle {
+            visible: appIcon.isPlaceholder || appIcon.status !== Image.Ready
             anchors.fill: appIcon
+            color: Theme.ash
+        }
 
-            sourceComponent: Item {
-                RoundButton {
-                    // Don't steal focus from the toolbar buttons
-                    focusPolicy: Qt.NoFocus
-
-                    anchors.horizontalCenterOffset: appIcon.isPlaceholder ? -47 : 0
-                    anchors.verticalCenterOffset: appIcon.isPlaceholder ? -75 : -60
-                    anchors.centerIn: parent
-                    implicitWidth: 85
-                    implicitHeight: 85
-
-                    icon.source: "qrc:/res/play_arrow_FILL1_wght700_GRAD200_opsz48.svg"
-                    icon.width: 75
-                    icon.height: 75
-                    icon.color: Theme.text
-
-                    onClicked: {
-                        launchOrResumeSelectedApp(true)
-                    }
-
-                    ToolTip.text: qsTr("Resume Game")
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 3000
-                    ToolTip.visible: hovered
-
-                    Material.background: Theme.accent
-                }
-
-                RoundButton {
-                    // Don't steal focus from the toolbar buttons
-                    focusPolicy: Qt.NoFocus
-
-                    anchors.horizontalCenterOffset: appIcon.isPlaceholder ? 47 : 0
-                    anchors.verticalCenterOffset: appIcon.isPlaceholder ? -75 : 60
-                    anchors.centerIn: parent
-                    implicitWidth: 85
-                    implicitHeight: 85
-
-                    icon.source: "qrc:/res/stop_FILL1_wght700_GRAD200_opsz48.svg"
-                    icon.width: 75
-                    icon.height: 75
-                    icon.color: Theme.text
-
-                    onClicked: {
-                        doQuitGame()
-                    }
-
-                    ToolTip.text: qsTr("Quit Game")
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 3000
-                    ToolTip.visible: hovered
-
-                    Material.background: Theme.accent
-                }
+        // Label, title, caption and arrow under the art
+        Column {
+            anchors { left: parent.left; right: parent.right; top: appIcon.bottom; margins: 16 }
+            spacing: 0
+            Rectangle {
+                width: tagText.implicitWidth + 14; height: 20
+                color: model.running ? Theme.marigold : Theme.ash
+                border.width: model.running ? 0 : 1
+                border.color: Theme.cardRule
+                Text { id: tagText; anchors.centerIn: parent; text: model.running ? qsTr("RUNNING NOW") : qsTr("APP"); color: Theme.ink; font.family: Theme.monoFont; font.pixelSize: 11 }
             }
+            Item { width: 1; height: 10 }
+            Text { width: parent.width; text: model.name; color: Theme.ink; font.family: Theme.sansFont; font.weight: Font.Bold; font.pixelSize: 20; font.letterSpacing: -0.4; elide: Text.ElideRight }
+            Item { width: 1; height: 4 }
+            Text { width: parent.width; text: model.running ? qsTr("resume · quit from Options") : qsTr("launch"); color: Theme.stone; font.family: Theme.monoFont; font.pixelSize: 12; elide: Text.ElideRight }
+        }
+        Text {
+            anchors { right: parent.right; bottom: parent.bottom; margins: 14 }
+            text: "→"; color: Theme.ink; font.family: Theme.sansFont; font.pixelSize: 18
         }
 
         Loader {
@@ -201,7 +205,7 @@ import AppModel 1.0; AppModel {}', parent, '')
             // in the time in which the text loads for each game.
 
             width: appIcon.width
-            height: model.running ? 175 : appIcon.height
+            height: appIcon.height
 
             anchors.left: appIcon.left
             anchors.right: appIcon.right
@@ -210,10 +214,11 @@ import AppModel 1.0; AppModel {}', parent, '')
             sourceComponent: Label {
                 id: appNameText
                 text: model.name
-                color: Theme.text
-                font.family: Theme.headingFont
+                color: Theme.ink
+                font.family: Theme.sansFont
                 font.weight: Font.Bold
-                font.pixelSize: Theme.px(26)
+                font.pixelSize: 34
+                font.letterSpacing: -1.5
                 leftPadding: 20
                 rightPadding: 20
                 verticalAlignment: Text.AlignVCenter
@@ -265,9 +270,7 @@ import AppModel 1.0; AppModel {}', parent, '')
             // For running games, buttons will appear to resume or quit which
             // will handle starting the game and clicks on the box art will
             // be ignored.
-            if (!model.running) {
-                launchOrResumeSelectedApp(true)
-            }
+            launchOrResumeSelectedApp(true)
         }
 
         onPressAndHold: {

@@ -40,7 +40,7 @@ Flickable {
     // DeckVoid layout: category sidebar on the left, a fixed header with the
     // category title and preset chips, and the selected category's cards below.
     property string category: "stream"
-    readonly property int sidebarWidth: Theme.mouseMode ? 200 : 240
+    readonly property int sidebarWidth: 260
     readonly property int headerHeight: Theme.mouseMode ? 76 : 92
     readonly property var footerHints: [["‹›", qsTr("Adjust")], ["A", qsTr("Select")], ["B", qsTr("Back")]]
     readonly property var categories: [
@@ -3479,40 +3479,66 @@ Flickable {
         z: 3
         width: settingsPage.sidebarWidth
         height: settingsPage.height
-        color: Theme.mouseMode ? Theme.surfaceMuted : Theme.background
-        Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.line }
+        color: Theme.paper
+        Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.ink }
         MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onWheel: (wheel) => wheel.accepted = true }
 
+        // Categories as flat lettered colour blocks (docs/design/KIT.md).
         Column {
-            x: Theme.mouseMode ? 16 : 24
-            y: Theme.mouseMode ? 16 : 24
-            width: parent.width - 2 * x
-            spacing: Theme.mouseMode ? 4 : 8
-
+            anchors.fill: parent
+            anchors.rightMargin: 1
             Repeater {
                 model: settingsPage.categories
                 delegate: Rectangle {
                     id: catItem
                     readonly property bool selected: settingsPage.category === modelData[0]
+                    readonly property var look: ({
+                        "stream":   [Theme.vermilion, Theme.bone, qsTr("picture, bitrate, presets")],
+                        "host":     [Theme.moss, Theme.bone, qsTr("Apollo display, permissions")],
+                        "controls": [Theme.marigold, Theme.ink, qsTr("mouse, keys, gamepad")],
+                        "haptics":  [Theme.cobalt, Theme.bone, qsTr("rumble, triggers")],
+                        "overlay":  [Theme.ash, Theme.ink, qsTr("stats, quick menu")],
+                        "about":    ["#E2DFDA", Theme.ink, qsTr("version, licences")]
+                    })[modelData[0]] || [Theme.ash, Theme.ink, ""]
                     width: parent.width
-                    height: Theme.mouseMode ? 38 : 54
-                    radius: height / 2
-                    color: selected ? Theme.secondaryTint : (catArea.containsMouse ? Theme.surfaceMuted : "transparent")
-                    border.width: activeFocus ? 2 : 0
-                    border.color: Theme.accent
+                    height: Math.min(130, Math.floor(settingsSidebar.height / settingsPage.categories.length))
+                    color: look[0]
                     activeFocusOnTab: true
                     Keys.onReturnPressed: settingsPage.category = modelData[0]
                     Keys.onEnterPressed: settingsPage.category = modelData[0]
                     Keys.onSpacePressed: settingsPage.category = modelData[0]
+
+                    // Selected: 3 px ink frame. Keyboard/controller focus adds a bone inner line.
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "transparent"
+                        border.width: 3
+                        border.color: Theme.ink
+                        visible: catItem.selected || catItem.activeFocus
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: 3
+                            color: "transparent"
+                            border.width: 2
+                            border.color: Theme.bone
+                            visible: catItem.activeFocus
+                        }
+                    }
                     Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.mouseMode ? 16 : 22
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData[1]
-                        color: Theme.text
-                        font.family: Theme.bodyFont
-                        font.weight: catItem.selected ? Font.Bold : Font.DemiBold
-                        font.pixelSize: Theme.row
+                        anchors.left: parent.left; anchors.leftMargin: 16
+                        anchors.bottom: parent.bottom; anchors.bottomMargin: 8
+                        text: modelData[1].charAt(0)
+                        color: catItem.look[1]
+                        font.family: Theme.sansFont
+                        font.weight: Font.Bold
+                        font.pixelSize: Math.min(72, catItem.height * 0.62)
+                        lineHeight: 0.8
+                    }
+                    Column {
+                        anchors.right: parent.right; anchors.rightMargin: 14
+                        anchors.bottom: parent.bottom; anchors.bottomMargin: 12
+                        width: parent.width - 84
+                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; text: modelData[1].toUpperCase(); color: catItem.look[1]; font.family: Theme.monoFont; font.pixelSize: 12; elide: Text.ElideRight }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignRight; text: catItem.look[2]; color: catItem.look[1]; font.family: Theme.monoFont; font.pixelSize: 11; opacity: 0.85; elide: Text.ElideRight }
                     }
                     MouseArea {
                         id: catArea
@@ -3543,9 +3569,10 @@ Flickable {
             anchors.verticalCenter: parent.verticalCenter
             text: settingsPage.categoryTitle(settingsPage.category)
             color: Theme.text
-            font.family: Theme.headingFont
+            font.family: Theme.sansFont
             font.weight: Font.Bold
-            font.pixelSize: Theme.settingsTitle
+            font.pixelSize: 40
+            font.letterSpacing: -1.2
         }
 
         // Presets (Stream only). Mouse: a segmented control; otherwise pill chips.
@@ -3556,13 +3583,13 @@ Flickable {
             anchors.verticalCenter: parent.verticalCenter
             width: presetRow.width + (Theme.mouseMode ? 8 : 0)
             height: presetRow.height + (Theme.mouseMode ? 8 : 0)
-            radius: Theme.mouseMode ? 10 : 0
-            color: Theme.mouseMode ? Theme.chip : "transparent"
+            radius: 0
+            color: "transparent"
 
             Row {
                 id: presetRow
                 anchors.centerIn: parent
-                spacing: Theme.mouseMode ? 2 : 10
+                spacing: 8
                 readonly property string active: settingsPage.activePreset()
                 Repeater {
                     model: [["battery", qsTr("Battery saver")], ["balanced", qsTr("Balanced")],
@@ -3572,10 +3599,10 @@ Flickable {
                         readonly property bool on: presetRow.active === modelData[0]
                         width: chipText.implicitWidth + (Theme.mouseMode ? 24 : 36)
                         height: Theme.mouseMode ? 30 : 46
-                        radius: Theme.mouseMode ? 7 : height / 2
-                        color: on ? (Theme.mouseMode ? Theme.surface : Theme.accentTint) : (Theme.mouseMode ? "transparent" : Theme.surface)
-                        border.width: Theme.mouseMode ? 0 : (activeFocus ? 2 : 1.5)
-                        border.color: activeFocus || on ? Theme.accent : Theme.lineStrong
+                        radius: Theme.radiusControl
+                        color: on ? Theme.ink : (Theme.mouseMode ? "transparent" : Theme.bone)
+                        border.width: activeFocus ? 2 : 1
+                        border.color: Theme.ink
                         activeFocusOnTab: true
                         Keys.onReturnPressed: settingsPage.applyPreset(modelData[0])
                         Keys.onEnterPressed: settingsPage.applyPreset(modelData[0])
@@ -3584,9 +3611,9 @@ Flickable {
                             id: chipText
                             anchors.centerIn: parent
                             text: modelData[1]
-                            color: Theme.text
+                            color: chip.on ? Theme.paper : Theme.ink
                             font.family: Theme.bodyFont
-                            font.weight: chip.on ? Font.Bold : Font.DemiBold
+                            font.weight: Font.Medium
                             font.pixelSize: Theme.mouseMode ? Theme.px(16) : Theme.px(18)
                         }
                         MouseArea {
