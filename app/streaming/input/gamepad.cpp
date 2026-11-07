@@ -1,4 +1,7 @@
 #include "streaming/session.h"
+#include "streaming/video/ffmpeg.h"
+
+#include <QDateTime>
 #include <ControllerHaptics.h>
 #include <ControllerSpeakerPcm.h>
 
@@ -266,6 +269,18 @@ void SdlInputHandler::handleControllerButtonEvent(SDL_ControllerButtonEvent* eve
 
     GamepadState* state = findStateForGamepad(event->which);
     if (state == NULL) {
+        return;
+    }
+
+    // The touchpad click marks the log: the user saw a problem (black, freeze,
+    // stutter). It is not sent to the host. Touches on the touchpad still are.
+    if (event->button == SDL_CONTROLLER_BUTTON_TOUCHPAD) {
+        if (event->state == SDL_PRESSED) {
+            const QByteArray utc = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs).toLatin1();
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                        "USER MARK: problem seen at %s UTC, newest decoded frame %d",
+                        utc.constData(), FFmpegVideoDecoder::lastDecodedFrameNumber());
+        }
         return;
     }
 

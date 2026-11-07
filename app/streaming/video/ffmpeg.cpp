@@ -1,4 +1,5 @@
 #include "streaming/bitrateadapter.h"
+#include "streaming/streamgaplog.h"
 #include <Limelight.h>
 #include "ffmpeg.h"
 #include "performancestats.h"
@@ -33,6 +34,7 @@ extern "C" {
 
 #ifdef Q_OS_DARWIN
 #include "ffmpeg-renderers/vt.h"
+#include <CoreVideo/CoreVideo.h>
 #endif
 
 #ifdef HAVE_LIBVA
@@ -2967,6 +2969,7 @@ void FFmpegVideoDecoder::decoderThreadProc()
                         0 : m_FrameDecodeHoldQueue.head();
                     const uint32_t frameLostPackets = m_FrameLostPacketsQueue.isEmpty() ?
                         0 : m_FrameLostPacketsQueue.head();
+                    bool dropCorruptFrame = false;
                     if (!m_FrameInfoQueue.isEmpty()) {
                         // Data buffers in the DU are not valid here!
                         DECODE_UNIT du = m_FrameInfoQueue.dequeue();
@@ -2984,6 +2987,23 @@ void FFmpegVideoDecoder::decoderThreadProc()
                         // Store the presentation time (90 kHz timebase) for
                         // existing renderers. VRR uses PacedFrame instead.
                         frame->pts = (int64_t)du.rtpTimestamp;
+
+                        s_LastDecodedFrameNumber.store(du.frameNumber, std::memory_order_relaxed);
+                        const bool afterLoss = m_BrightnessChecksLeft > 0;
+                        if (afterLoss) {
+                            m_BrightnessChecksLeft--;
+                        }
+                        if (m_BlackDetect || afterLoss) {
+                            checkFrameBrightness(frame, du.frameNumber, afterLoss);
+                        }
+                        if (afterLoss && ((frame->flags & AV_FRAME_FLAG_CORRUPT) || frame->decode_error_flags)) {
+                            // The decoder says this recovery picture is damaged: keep the last
+                            // good image on screen and ask for a clean IDR frame instead
+                            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                                        "Frame %d after a loss: decoder marked it corrupt (flags 0x%x, errors 0x%x); dropped, requesting an IDR frame",
+                                        du.frameNumber, frame->flags, frame->decode_error_flags);
+                            dropCorruptFrame = true;
+                        }
                     }
                     if (!m_FrameSubmitTimeQueue.isEmpty()) {
                         m_FrameSubmitTimeQueue.dequeue();
@@ -2998,7 +3018,11 @@ void FFmpegVideoDecoder::decoderThreadProc()
                     m_ActiveWndVideoStats.decodedFrames++;
 
                     // Queue the frame for rendering (or render now if pacer is disabled)
-                    if (vrrActive) {
+                    if (dropCorruptFrame) {
+                        av_frame_free(&frame);
+                        LiRequestIdrFrame();
+                    }
+                    else if (vrrActive) {
                         PacedFrame pacedFrame(frame,
                                               frameNumber,
                                               rtpTimestamp,
@@ -3078,6 +3102,97 @@ void FFmpegVideoDecoder::decoderThreadProc()
     }
 }
 
+std::atomic<int> FFmpegVideoDecoder::s_LastDecodedFrameNumber{0};
+
+int FFmpegVideoDecoder::lastDecodedFrameNumber()
+{
+    return s_LastDecodedFrameNumber.load(std::memory_order_relaxed);
+}
+
+// Mean of an 8x8 grid of luma samples, 0-255 (limited-range black is 16), or -1
+// when this decoder's frames can't be read on the CPU cheaply
+static int sampleFrameLuma(const AVFrame* frame)
+{
+    int sum = 0, samples = 0;
+    auto sampleGrid = [&](const uint8_t* base, size_t stride, int width, int height, int bytesPerSample) {
+        for (int gy = 0; gy < 8; gy++) {
+            for (int gx = 0; gx < 8; gx++) {
+                const uint8_t* p = base + size_t(height * (2 * gy + 1) / 16) * stride +
+                                   size_t(width * (2 * gx + 1) / 16) * bytesPerSample;
+                // 10-bit samples are stored in the high bits of 16-bit little-endian words
+                sum += bytesPerSample == 2 ? p[1] : p[0];
+                samples++;
+            }
+        }
+    };
+
+#ifdef Q_OS_DARWIN
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        auto pixelBuffer = reinterpret_cast<CVPixelBufferRef>(frame->data[3]);
+        if (pixelBuffer != nullptr && CVPixelBufferIsPlanar(pixelBuffer) &&
+                CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly) == kCVReturnSuccess) {
+            const OSType format = CVPixelBufferGetPixelFormatType(pixelBuffer);
+            const bool eightBit = format == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
+                                  format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange ||
+                                  format == kCVPixelFormatType_444YpCbCr8BiPlanarVideoRange ||
+                                  format == kCVPixelFormatType_444YpCbCr8BiPlanarFullRange;
+            const auto* base = static_cast<const uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0));
+            if (base != nullptr) {
+                sampleGrid(base, CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0),
+                           int(CVPixelBufferGetWidthOfPlane(pixelBuffer, 0)),
+                           int(CVPixelBufferGetHeightOfPlane(pixelBuffer, 0)), eightBit ? 1 : 2);
+            }
+            CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+        }
+    }
+    else
+#endif
+    if ((frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUVJ420P ||
+         frame->format == AV_PIX_FMT_NV12) && frame->data[0] != nullptr) {
+        sampleGrid(frame->data[0], size_t(frame->linesize[0]), frame->width, frame->height, 1);
+    }
+
+    return samples ? sum / samples : -1;
+}
+
+void FFmpegVideoDecoder::checkFrameBrightness(const AVFrame* frame, int frameNumber, bool afterLoss)
+{
+    const int luma = sampleFrameLuma(frame);
+    if (afterLoss) {
+        if (luma < 0) {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                        "Frame %d after a loss: decoded (brightness check not available for this decoder)", frameNumber);
+        }
+        else {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Frame %d after a loss: decoded, mean luma %d of 255%s",
+                        frameNumber, luma, luma <= 20 ? " (BLACK)" : "");
+        }
+    }
+    if (!m_BlackDetect || luma < 0) {
+        return;
+    }
+
+    // Log every switch between a black and a normal decoded picture, so a black
+    // moment the user saw can be matched to a frame number. If the user saw black
+    // and no line appears, the black came after the decoder.
+    // Hysteresis so dark content near the threshold does not flood the log
+    const bool black = m_DecodedBlack ? luma < 28 : luma <= 20;
+    if (black != m_DecodedBlack) {
+        const uint64_t nowUs = LiGetMicroseconds();
+        const QByteArray utc = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs).toLatin1();
+        if (black) {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Decoded picture went BLACK at frame %d (%s UTC, mean luma %d)",
+                        frameNumber, utc.constData(), luma);
+            m_DecodedBlackSinceUs = nowUs;
+        }
+        else if (m_DecodedBlackSinceUs != 0) {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Decoded picture back at frame %d (%s UTC, mean luma %d) after %.0f ms of black",
+                        frameNumber, utc.constData(), luma, (nowUs - m_DecodedBlackSinceUs) / 1000.0);
+        }
+        m_DecodedBlack = black;
+    }
+}
+
 int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
 {
     auto* gpuTrace = m_FrontendRenderer->gpuDiagnosticTrace();
@@ -3092,14 +3207,44 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
         return DR_NEED_IDR;
     }
 
+    m_VideoGapLog.note(du->receiveTimeUs, (uint32_t)du->frameNumber);
+
+    // For the first 10 s, log once a second how many frames are waiting, to show
+    // whether the stream starts behind (a backlog that never drains)
+    {
+        const uint64_t nowUs = LiGetMicroseconds();
+        if (m_BacklogLogEndUs == 0) {
+            m_BacklogLogEndUs = nowUs + 10000000;
+            m_BacklogLogNextUs = nowUs + 1000000;
+        }
+        else if (nowUs < m_BacklogLogEndUs && nowUs >= m_BacklogLogNextUs) {
+            m_BacklogLogNextUs += 1000000;
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                        "Start-up backlog: frame %d, %d frames queued for the decoder, %d in the decoder",
+                        du->frameNumber, LiGetPendingVideoFrames(), m_FramesIn - m_FramesOut);
+        }
+    }
+    // Delay is measured when the whole frame was in: the last packet, not the first
+    BitrateAdapter::noteFrameTiming(du->enqueueTimeUs, du->rtpTimestamp);
+    if (du->frameType == FRAME_TYPE_IDR) {
+        BitrateAdapter::noteKeyFrame(LiGetMicroseconds());
+    }
+
     if (!m_LastFrameNumber) {
         m_ActiveWndVideoStats.measurementStartUs = LiGetMicroseconds();
         m_LastFrameNumber = du->frameNumber;
     }
     else {
         // Any frame number greater than m_LastFrameNumber + 1 represents a dropped frame
+        if (du->frameNumber > m_LastFrameNumber + 1) {
+            // The next frames shown are the recovery from this loss: check that they
+            // are a picture, not black
+            m_BrightnessChecksLeft = 2;
+        }
         m_ActiveWndVideoStats.networkDroppedFrames += du->frameNumber - (m_LastFrameNumber + 1);
-        BitrateAdapter::noteFramesDropped(du->frameNumber - (m_LastFrameNumber + 1));
+        if (du->frameNumber > m_LastFrameNumber + 1) {
+            BitrateAdapter::noteLossEvent(du->frameNumber - (m_LastFrameNumber + 1));
+        }
         m_ActiveWndVideoStats.totalFrames += du->frameNumber - (m_LastFrameNumber + 1);
         m_LastFrameNumber = du->frameNumber;
     }

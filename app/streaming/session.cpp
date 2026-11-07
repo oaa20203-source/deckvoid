@@ -1,3 +1,4 @@
+#include "streamgaplog.h"
 #include "streaming/input/dualsensehaptics.h"
 #include "streaming/input/steamcontroller/steamcontrollerhost.h"
 #include <QNetworkInterface>
@@ -82,7 +83,27 @@ static inline void sleepForControllerPoll() { usleep(pollIntervalUs()); }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QQuickOpenGLUtils>
+
 #endif
+
+#include <QHostAddress>
+
+namespace {
+// Tailscale's tunnel MTU is 1280. 1216-byte video packets fill it without
+// fragmenting (MTU - 64, rounded down to 16), about 16% fewer packets than 1024.
+constexpr int kTailscalePacketSize = 1216;
+
+// Tailscale addresses: 100.64.0.0/10 (CGNAT range) and fd7a:115c:a1e0::/48
+bool isTailscaleAddress(const QString& host)
+{
+    QHostAddress address(host);
+    if (address.isNull()) {
+        return false;
+    }
+    return address.isInSubnet(QHostAddress("100.64.0.0"), 10) ||
+           address.isInSubnet(QHostAddress("fd7a:115c:a1e0::"), 48);
+}
+}
 
 #define CONN_TEST_SERVER "qt.conntest.moonlight-stream.org"
 
@@ -2011,13 +2032,24 @@ bool Session::startConnectionAsync()
             // It looks like our route to this PC is over a VPN, so cap at 1024 bytes.
             // Treat it as remote even if the target address is in RFC 1918 address space.
             m_StreamConfig.streamingRemotely = STREAM_CFG_REMOTE;
-            m_StreamConfig.packetSize = 1024;
+            m_StreamConfig.packetSize = isTailscaleAddress(m_Computer->activeAddress.address()) ?
+                                            kTailscalePacketSize : 1024;
             break;
         default:
-            // If we don't have reachability info, let moonlight-common-c decide.
-            m_StreamConfig.streamingRemotely = STREAM_CFG_AUTO;
+            if (isTailscaleAddress(m_Computer->activeAddress.address())) {
+                // A Tailscale address is a VPN route even when reachability is unknown
+                m_StreamConfig.streamingRemotely = STREAM_CFG_REMOTE;
+                m_StreamConfig.packetSize = kTailscalePacketSize;
+            }
+            else {
+                // If we don't have reachability info, let moonlight-common-c decide.
+                m_StreamConfig.streamingRemotely = STREAM_CFG_AUTO;
+            }
             break;
         }
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Video packet size: %d bytes%s",
+                    m_StreamConfig.packetSize,
+                    isTailscaleAddress(m_Computer->activeAddress.address()) ? " (Tailscale route)" : "");
     }
 
     // If the user has chosen YUV444 without adjusting the bitrate but the host doesn't
@@ -2101,6 +2133,7 @@ bool Session::startConnectionAsync()
     if (!(m_SupportedVideoFormats & VIDEO_FORMAT_MASK_PYROWAVE)) {
         BitrateAdapter::start(m_Computer, m_StreamConfig.bitrate, m_StreamConfig.fps);
     }
+    StreamGapLog::logClockAnchor();
     emit connectionStarted();
     return true;
 }
@@ -2737,6 +2770,12 @@ void Session::exec()
 
             SDL_LockMutex(m_DecoderLock);
 
+            // The stream's first decoder needs no extra IDR request: the stream
+            // starts with one, and a pull-mode decoder waits for it
+            // (a full-screen toggle also leaves m_VideoDecoder null, so track it separately)
+            m_FirstDecoderForStream = !m_DecoderCreatedForStream;
+            m_DecoderCreatedForStream = true;
+
             // Destroy the old decoder
             delete m_VideoDecoder;
 
@@ -2797,7 +2836,9 @@ void Session::exec()
             }
 
             // Request an IDR frame to complete the reset
-            LiRequestIdrFrame();
+            if (!m_FirstDecoderForStream || !(m_VideoCallbacks.capabilities & CAPABILITY_PULL_RENDERER)) {
+                LiRequestIdrFrame();
+            }
 
             // Set HDR mode. We may miss the callback if we're in the middle
             // of recreating our decoder at the time the HDR transition happens.

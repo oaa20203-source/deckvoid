@@ -1,5 +1,7 @@
 #pragma once
 
+#include "streaming/streamgaplog.h"
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <QQueue>
@@ -150,6 +152,20 @@ private:
     int m_FramesOut;
 
     int m_LastFrameNumber;
+    StreamGapLog m_VideoGapLog{"video"};
+    int m_BrightnessChecksLeft = 0;
+    // Watch every decoded picture for black (Mac/software frames; off with DECKVOID_BLACK_DETECT=0)
+    bool m_BlackDetect = qgetenv("DECKVOID_BLACK_DETECT") != "0";
+    bool m_DecodedBlack = false;
+    uint64_t m_DecodedBlackSinceUs = 0;
+    void checkFrameBrightness(const AVFrame* frame, int frameNumber, bool afterLoss);
+    static std::atomic<int> s_LastDecodedFrameNumber;
+public:
+    // The newest frame number the decoder has output, for log marks
+    static int lastDecodedFrameNumber();
+private:
+    uint64_t m_BacklogLogEndUs = 0;
+    uint64_t m_BacklogLogNextUs = 0;
     IncomingFrameTiming m_IncomingFrameTiming;
     int m_StreamFps;
     int m_OriginalVideoWidth;

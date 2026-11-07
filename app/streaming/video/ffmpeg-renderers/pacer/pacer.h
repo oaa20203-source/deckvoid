@@ -99,6 +99,8 @@ private:
     IVsyncSource* m_VsyncSource;
     IFFmpegRenderer* m_VsyncRenderer;
     int m_MaxVideoFps;
+    // Frame pacing is off: keep only the newest frame waiting to render
+    bool m_LatestFrameOnly = false;
     int m_DisplayFps;
     int m_RendererAttributes;
     PacerTelemetry m_Telemetry;

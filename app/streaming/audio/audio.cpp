@@ -1,4 +1,5 @@
 #include "../session.h"
+#include "../streamgaplog.h"
 #include "renderers/renderer.h"
 
 #ifdef HAVE_SLAUDIO
@@ -150,6 +151,13 @@ void Session::arCleanup()
 void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
 {
     int samplesDecoded;
+
+    // Only one audio stream runs at a time, on this thread
+    static StreamGapLog s_AudioGapLog("audio");
+    if (s_ActiveSession->m_AudioSampleCount == 0) {
+        s_AudioGapLog = StreamGapLog("audio");
+    }
+    s_AudioGapLog.note(LiGetMicroseconds(), (uint32_t)s_ActiveSession->m_AudioSampleCount);
 
 #ifndef STEAM_LINK
     // Set this thread to high priority to reduce the chance of missing

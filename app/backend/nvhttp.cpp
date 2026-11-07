@@ -633,19 +633,37 @@ NvHTTP::getClipboard(int timeoutMs)
 }
 
 int
-NvHTTP::setRuntimeBitrate(int kbps, int timeoutMs)
+NvHTTP::setRuntimeBitrate(int kbps, int timeoutMs, int* appliedKbps)
 {
     try {
         QString response = openConnectionToString(m_BaseUrlHttps, "bitrate",
                                                   "bitrate=" + QString::number(kbps),
                                                   timeoutMs, NvLogLevel::NVLL_ERROR);
         verifyResponseStatus(response);
+        if (appliedKbps != nullptr) {
+            bool ok = false;
+            const int applied = getXmlString(response, "bitrate").toInt(&ok);
+            *appliedKbps = (ok && applied > 0) ? applied : kbps;
+        }
         return 200;
     } catch (const GfeHttpResponseException& e) {
         return e.getStatusCode();
     } catch (const QtNetworkReplyException& e) {
         // An HTTP error without an XML body, e.g. a host without the endpoint
-        return e.getError() == QNetworkReply::ContentNotFoundError ? 404 : 0;
+        switch (e.getError()) {
+        case QNetworkReply::ContentNotFoundError:
+            return 404;
+        case QNetworkReply::ProtocolInvalidOperationError:
+            return 400;
+        case QNetworkReply::ContentAccessDenied:
+            return 403;
+        case QNetworkReply::ContentOperationNotPermittedError:
+            return 405;
+        case QNetworkReply::OperationNotImplementedError:
+            return 501;
+        default:
+            return 0;
+        }
     }
 }
 

@@ -357,6 +357,9 @@ private:
     OPUS_MULTISTREAM_CONFIGURATION m_ActiveAudioConfig;
     OPUS_MULTISTREAM_CONFIGURATION m_OriginalAudioConfig;
     int m_AudioSampleCount;
+    // Set while (re)creating the decoder: true for the stream's first decoder
+    bool m_FirstDecoderForStream = false;
+    bool m_DecoderCreatedForStream = false;
     Uint32 m_DropAudioEndTime;
 
     Overlay::OverlayManager m_OverlayManager;

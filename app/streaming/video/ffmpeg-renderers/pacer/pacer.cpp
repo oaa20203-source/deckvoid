@@ -18,6 +18,7 @@
 
 #include <SDL_syswm.h>
 
+#include <algorithm>
 #include <utility>
 
 // Limit the number of queued frames to prevent excessive memory consumption
@@ -208,7 +209,21 @@ int Pacer::renderThread(void* context)
 
 void Pacer::enqueueFrameForRenderingAndUnlock(AVFrame *frame)
 {
-    dropFrameForEnqueue(m_RenderQueue);
+    if (m_LatestFrameOnly) {
+        // Without frame pacing, a frame waiting to be rendered is already late when
+        // a newer one arrives (a burst after a network stall, or a renderer blocked
+        // on V-sync). Keep at most one frame waiting and show the newest, so a frame
+        // goes out at the next vblank (V-sync on) or at once (V-sync off) instead of
+        // after a backlog. With pacing on, its queue keeps absorbing jitter.
+        while (!m_RenderQueue.isEmpty()) {
+            AVFrame* stale = m_RenderQueue.dequeue();
+            av_frame_free(&stale);
+            m_Telemetry.recordLegacyDrop();
+        }
+    }
+    else {
+        dropFrameForEnqueue(m_RenderQueue);
+    }
     m_RenderQueue.enqueue(frame);
 
     m_FrameQueueLock.unlock();
@@ -298,6 +313,9 @@ bool Pacer::initialize(SDL_Window* window, int maxVideoFps,
 {
     m_MaxVideoFps = maxVideoFps;
     m_RendererAttributes = m_VsyncRenderer->getRendererAttributes();
+    m_LatestFrameOnly = !enablePacing && !enableVrr &&
+                        !(m_RendererAttributes & RENDERER_ATTRIBUTE_FORCE_PACING);
+
 
     // VRR is deliberately a third pacing mode. It is selected once, before
     // any legacy V-sync source or render thread can be created, and every

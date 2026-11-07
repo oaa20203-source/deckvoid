@@ -236,6 +236,7 @@ SOURCES += \
 
 HEADERS += \
     streaming/bitrateadapter.h \
+    streaming/streamgaplog.h \
     streaming/bitratepolicy.h \
     streaming/video/videothreadpriority.h \
     streaming/video/timinggraph.h \

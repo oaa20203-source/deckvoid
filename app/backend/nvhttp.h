@@ -211,7 +211,11 @@ public:
     // Vibepollo runtime bitrate (HTTPS /bitrate?bitrate=kbps). Returns the
     // host's status code: 200 applied, 403/404 refused or unsupported, 0 on a
     // network error. Never throws.
-    int setRuntimeBitrate(int kbps, int timeoutMs = 2000);
+    // Returns the HTTP status: 200 (appliedKbps, if given, gets the bitrate the
+    // host applied, which may be clamped below the request), 400 (the bitrate
+    // does not fit the host's pacing ceiling), 404 (no endpoint or no session),
+    // another status code, or 0 when the request failed.
+    int setRuntimeBitrate(int kbps, int timeoutMs = 2000, int* appliedKbps = nullptr);
 
     QImage
     getBoxArt(int appId);

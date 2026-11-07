@@ -80,7 +80,7 @@ static void speakerCallback(uint16_t controller, uint64_t owner,
 
 static void checkSpeakerNegotiation(void) {
     const char* attribute = "a=x-ml-general.featureFlags:";
-    const uint32_t baseFlags = ML_FF_FEC_STATUS | ML_FF_SESSION_ID_V1;
+    const uint32_t baseFlags = ML_FF_SESSION_ID_V1;
     for (int enabled = 0; enabled < 3; enabled++) {
         // Exercise registration and subsequent removal, not just zero startup state.
         ControllerSpeakerPcmCallback = enabled == 1 ? speakerCallback : NULL;
