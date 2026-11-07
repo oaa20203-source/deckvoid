@@ -55,6 +55,22 @@ jobs:
             -pthread -o build-tst_steamcontroller
           ./build-tst_steamcontroller
 
+  # !ink's own suites: the adaptive bitrate policy and the Apollo host rules
+  # (launch verb and replies, permissions, clipboard sync, quick menu, updater versions).
+  test-ink:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Qt 6
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qt6-base-dev
+      - name: Test the adaptive bitrate policy and the Apollo host rules
+        run: |
+          for suite in streaming/bitratepolicy:tst_bitratepolicy apollo/apollo:tst_apollo; do
+            pro=${suite%%:*}; bin=${suite##*:}
+            mkdir -p "build-$bin"
+            (cd "build-$bin" && qmake6 "../tests/$pro.pro" && make -j"$(nproc)" && QT_QPA_PLATFORM=offscreen "./$bin")
+          done
+
   setup:
     runs-on: ubuntu-latest
     outputs:
@@ -79,7 +95,7 @@ jobs:
   # https://github.com/oaa20203-source/deckvoid/releases/latest/download/ink-x86_64.flatpak
   # (GitHub drops the "!" from asset names, so the file is ink-, not !ink-.)
   publish-deck-build:
-    needs: [setup, build-flatpak]
+    needs: [setup, build-flatpak, test-ink]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
