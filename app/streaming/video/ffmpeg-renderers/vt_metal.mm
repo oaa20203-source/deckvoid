@@ -911,7 +911,7 @@ public:
         cancelFrame();
         m_VrrEnabled = false;
         m_MetalLayer.displaySyncEnabled = m_FixedVsyncEnabled;
-        m_MetalLayer.maximumDrawableCount = 3;
+        m_MetalLayer.maximumDrawableCount = m_FixedDrawableCount;
         return true;
     }
 
@@ -1112,6 +1112,17 @@ public:
             // Allow tearing if V-Sync is off (also requires direct display path)
             m_MetalLayer.displaySyncEnabled = m_VrrEnabled || params->enableVsync;
             m_MetalLayer.opaque = YES;
+            // Fixed V-sync: with three drawables, two finished pictures can wait
+            // behind the one on screen whenever frames arrive faster than the
+            // display refreshes, which adds up to two refreshes of delay. With
+            // two, nextDrawable waits for the display instead and Pacer keeps
+            // only the newest frame meanwhile. Opt-in until measured on a
+            // stream: DECKVOID_METAL_DRAWABLES=2.
+            if (!m_VrrEnabled && m_MetalLayer.displaySyncEnabled && qgetenv("DECKVOID_METAL_DRAWABLES") == "2") {
+                m_FixedDrawableCount = 2;
+                m_MetalLayer.maximumDrawableCount = 2;
+                SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Metal layer: 2 drawables (low-latency present queue)");
+            }
             if (m_VrrEnabled) {
                 // A synchronized layer can retain both the displayed drawable
                 // and the submitted successor. Keep a third slot available for
@@ -1450,6 +1461,8 @@ private:
     AVBufferRef* m_HwContext;
     CAMetalLayer* m_MetalLayer;
     CAMetalDisplayLink* m_MetalDisplayLink API_AVAILABLE(macos(14.0));
+    // Drawables the layer keeps with fixed V-sync (3 is CAMetalLayer's default)
+    NSUInteger m_FixedDrawableCount = 3;
     std::thread m_DisplayLinkThread;
     CFRunLoopRef m_DisplayLinkRunLoop;
     bool m_VrrEnabled;
