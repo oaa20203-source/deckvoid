@@ -145,6 +145,7 @@ void BitrateAdapter::run(NvComputer* computer, int ceilingKbps, int fps)
         // No video packets at all for this long is an outage; waiting for a
         // recovery frame still receives (dropped) packets, so it is not one
         window.outage = LiGetAndResetLongestVideoPacketGapUs() >= kOutageGapUs;
+        window.unrecoverableFrames = LiGetAndResetUnrecoverableVideoFrames();
 
         // Does this host send a keyframe with every bitrate change? Watch the first changes.
         if (changeAppliedUs != 0 && LiGetMicroseconds() - changeAppliedUs >= kKeyFrameAfterChangeUs) {

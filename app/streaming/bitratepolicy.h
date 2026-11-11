@@ -52,6 +52,7 @@ public:
         uint32_t longestLossEvent = 0;  // frames in the largest gap
         int queueDelayMs = 0;           // lowest frame delay above the baseline (0 when unknown)
         bool outage = false;            // no video packets at all for 250 ms or more
+        uint32_t unrecoverableFrames = 0; // frames the network lost beyond repair, decoded or not
     };
 
     struct State {

@@ -65,8 +65,19 @@ BitratePolicy::State BitratePolicy::initial(int ceilingKbps, int fps)
     return s;
 }
 
-int BitratePolicy::decide(State& s, const Window& w)
+int BitratePolicy::decide(State& s, const Window& in)
 {
+    Window w = in;
+    // Packets keep arriving but every frame is lost: the decoder sits waiting
+    // for a recovery frame, so it reports neither frames nor gaps, and the one
+    // gap it reports afterwards looks like an outage. The link is carrying the
+    // stream and losing most of it, which is repeated loss: cut. (Seen at 55
+    // Mbps over Wi-Fi: half of every frame's packets lost for 60 s, no cut.)
+    if (!w.outage && w.received < kMinFramesPerWindow && w.unrecoverableFrames >= kMinFramesPerWindow) {
+        w.lossEvents = std::max<uint32_t>(w.lossEvents, 2);
+        w.lostFrames = std::max(w.lostFrames, w.unrecoverableFrames);
+        w.longestLossEvent = 0;
+    }
     s.tick++;
     s.ticksSinceChange++;
     const bool holding = s.holdTicks > 0;

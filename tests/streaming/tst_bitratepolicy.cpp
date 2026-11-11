@@ -103,6 +103,27 @@ private slots:
         QVERIFY(s.holdTicks > 0);
     }
 
+    // Packets arrive but every frame is lost, so the decoder waits for a recovery
+    // frame and reports nothing: half of each frame lost for 60 s at 55 Mbps over
+    // Wi-Fi never cut, because the windows looked like a still screen.
+    void framesLostWhileWaitingForRecoveryCut()
+    {
+        auto s = fresh();
+        Window starved = win(0);
+        starved.unrecoverableFrames = 60;
+        QCOMPARE(step(s, starved), 71500);
+        // A real outage (no packets) still never cuts
+        auto t = fresh();
+        Window outage = win(0, 0, 0, 0, true);
+        outage.unrecoverableFrames = 60;
+        QCOMPARE(step(t, outage), 84000);
+        // A few lost frames in a still window are not enough to judge
+        auto u = fresh();
+        Window few = win(0);
+        few.unrecoverableFrames = 3;
+        QCOMPARE(step(u, few), 84000);
+    }
+
     void ignoredLossesDoNotCountTowardALaterCut()
     {
         // After an outage, one stray loss is isolated
