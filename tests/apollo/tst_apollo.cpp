@@ -10,6 +10,8 @@
 #include "backend/apollo/apolloclipboardsync.h"
 #include "backend/apollo/apolloquickmenu.h"
 #include "backend/inkupdater.h"
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "backend/nvapp.h"
 
 #include <QSettings>
@@ -72,6 +74,28 @@ private slots:
         QCOMPARE(InkUpdater::versionFromReleaseTitle("Latest Steam Deck build (0.1.0-ee27f54) "), QString("0.1.0-ee27f54"));
         QVERIFY(InkUpdater::versionFromReleaseTitle("Latest Steam Deck build").isEmpty());
         QVERIFY(InkUpdater::versionFromReleaseTitle("").isEmpty());
+    }
+    void updaterReadsBundleDigest()
+    {
+        const QByteArray hex(64, 'a');
+        const auto release = QJsonDocument::fromJson(
+            "{\"assets\":[{\"name\":\"DeckVoid-x86_64.flatpak\",\"digest\":\"sha256:" + QByteArray(64, 'b') + "\"},"
+            "{\"name\":\"ink-x86_64.flatpak\",\"digest\":\"sha256:" + hex.toUpper() + "\"}]}").object();
+        QCOMPARE(InkUpdater::bundleSha256FromRelease(release), hex);
+        // No digest, a malformed one, or no such asset: nothing to compare against
+        QVERIFY(InkUpdater::bundleSha256FromRelease(QJsonDocument::fromJson(
+            "{\"assets\":[{\"name\":\"ink-x86_64.flatpak\"}]}").object()).isEmpty());
+        QVERIFY(InkUpdater::bundleSha256FromRelease(QJsonDocument::fromJson(
+            "{\"assets\":[{\"name\":\"ink-x86_64.flatpak\",\"digest\":\"sha256:abc\"}]}").object()).isEmpty());
+        QVERIFY(InkUpdater::bundleSha256FromRelease(QJsonObject()).isEmpty());
+    }
+    void updaterInstallsOnlyAMatchingBundle()
+    {
+        const QByteArray hex(64, 'a');
+        QVERIFY(InkUpdater::bundleMatches(hex, hex));
+        QVERIFY(InkUpdater::bundleMatches(hex, hex.toUpper()));
+        QVERIFY(!InkUpdater::bundleMatches(hex, QByteArray(64, 'b')));
+        QVERIFY(InkUpdater::bundleMatches(QByteArray(), hex));
     }
     void updaterOffersOnlyADifferentBuild()
     {

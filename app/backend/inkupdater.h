@@ -1,11 +1,15 @@
 #pragma once
 
+#include <QByteArray>
 #include <QObject>
+#include <QScopedPointer>
 #include <QString>
 
 class QNetworkAccessManager;
 class QNetworkReply;
 class QFile;
+class QCryptographicHash;
+class QJsonObject;
 
 // In-app updater for the Linux Flatpak build of !ink.
 //
@@ -17,6 +21,9 @@ class QFile;
 // --talk-name=org.freedesktop.Flatpak permission), and restarts. In Steam's
 // Gaming Mode a self-started process would not be shown, so there it quits and
 // asks to be started again from the Library instead.
+//
+// The downloaded bundle must match the SHA-256 the release lists for it, and
+// a check or download that stalls for 30 s fails instead of hanging.
 //
 // Only active inside the !ink Flatpak; everywhere else it stays idle.
 class InkUpdater : public QObject
@@ -32,6 +39,7 @@ class InkUpdater : public QObject
 
 public:
     explicit InkUpdater(QObject* parent = nullptr);
+    ~InkUpdater() override;
 
     bool supported() const { return m_Supported; }
     bool available() const { return m_Available; }
@@ -50,6 +58,11 @@ public:
     // True when the release is a different build than this one
     static bool isNewer(const QString& current, const QString& latest);
 
+    // The bundle's SHA-256 (lowercase hex) from the release JSON, or empty
+    static QByteArray bundleSha256FromRelease(const QJsonObject& release);
+    // True when the download may be installed
+    static bool bundleMatches(const QByteArray& expectedSha256, const QByteArray& actualSha256);
+
 signals:
     void changed();
 
@@ -62,6 +75,9 @@ private:
     QNetworkAccessManager* m_Nam;
     QNetworkReply* m_Download = nullptr;
     QFile* m_DownloadFile = nullptr;
+    QScopedPointer<QCryptographicHash> m_DownloadHash;
+    QByteArray m_ExpectedSha256;
+    bool m_WriteFailed = false;
     bool m_Supported;
     bool m_Available = false;
     QString m_LatestVersion;

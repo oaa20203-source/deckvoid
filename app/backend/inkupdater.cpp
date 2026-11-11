@@ -1,9 +1,11 @@
 #include "inkupdater.h"
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -17,6 +19,9 @@ namespace {
 const char* kAppId = "io.github.oaa20203_source.deckvoid";
 const char* kReleaseApi = "https://api.github.com/repos/oaa20203-source/deckvoid/releases/tags/latest-build";
 const char* kBundleUrl = "https://github.com/oaa20203-source/deckvoid/releases/latest/download/ink-x86_64.flatpak";
+const char* kBundleName = "ink-x86_64.flatpak";
+// A request with no data for this long has stalled
+constexpr int kTransferTimeoutMs = 30 * 1000;
 constexpr int kCheckIntervalMs = 6 * 60 * 60 * 1000;
 constexpr int kFirstCheckDelayMs = 10 * 1000;
 }
@@ -38,12 +43,31 @@ InkUpdater::InkUpdater(QObject* parent)
     timer->start(kCheckIntervalMs);
 }
 
+InkUpdater::~InkUpdater() = default;
+
 QString InkUpdater::versionFromReleaseTitle(const QString& title)
 {
     // "Latest Steam Deck build (0.1.0-99685c8)" -> "0.1.0-99685c8"
     static const QRegularExpression re(QStringLiteral("\\(([0-9][0-9A-Za-z.\\-]*)\\)\\s*$"));
     const auto match = re.match(title.trimmed());
     return match.hasMatch() ? match.captured(1) : QString();
+}
+
+QByteArray InkUpdater::bundleSha256FromRelease(const QJsonObject& release)
+{
+    // GitHub reports each asset's digest as "sha256:<hex>"
+    const auto assets = release.value(QStringLiteral("assets")).toArray();
+    for (const auto& value : assets) {
+        const auto asset = value.toObject();
+        if (asset.value(QStringLiteral("name")).toString() != QLatin1String(kBundleName)) {
+            continue;
+        }
+        const QString digest = asset.value(QStringLiteral("digest")).toString();
+        static const QRegularExpression re(QStringLiteral("^sha256:([0-9a-fA-F]{64})$"));
+        const auto match = re.match(digest);
+        return match.hasMatch() ? match.captured(1).toLower().toLatin1() : QByteArray();
+    }
+    return QByteArray();
 }
 
 bool InkUpdater::isNewer(const QString& current, const QString& latest)
@@ -92,6 +116,7 @@ void InkUpdater::check()
     QNetworkRequest request{QUrl(QString::fromLatin1(kReleaseApi))};
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("ink-updater"));
+    request.setTransferTimeout(kTransferTimeoutMs);
     QNetworkReply* reply = m_Nam->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
@@ -103,6 +128,7 @@ void InkUpdater::check()
         const QString latest = versionFromReleaseTitle(release.value(QStringLiteral("name")).toString());
         const QString current = QCoreApplication::applicationVersion();
         m_LatestVersion = latest;
+        m_ExpectedSha256 = bundleSha256FromRelease(release);
         m_Available = isNewer(current, latest);
         qInfo() << "Updater: running" << current << "- latest build" << latest
                 << (m_Available ? "(update available)" : "(up to date)");
@@ -134,12 +160,21 @@ void InkUpdater::update()
     }
 
     m_Progress = 0;
+    m_WriteFailed = false;
+    m_DownloadHash.reset(new QCryptographicHash(QCryptographicHash::Sha256));
     setState(QStringLiteral("downloading"));
     QNetworkRequest request{QUrl(QString::fromLatin1(kBundleUrl))};
     request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("ink-updater"));
+    request.setTransferTimeout(kTransferTimeoutMs);
     m_Download = m_Nam->get(request);
     connect(m_Download, &QNetworkReply::readyRead, this, [this]() {
-        m_DownloadFile->write(m_Download->readAll());
+        const QByteArray chunk = m_Download->readAll();
+        m_DownloadHash->addData(chunk);
+        if (!m_WriteFailed && m_DownloadFile->write(chunk) != chunk.size()) {
+            // Most likely a full disk: stop instead of installing a short file
+            m_WriteFailed = true;
+            m_Download->abort();
+        }
     });
     connect(m_Download, &QNetworkReply::downloadProgress, this, [this](qint64 received, qint64 total) {
         if (total > 0) {
@@ -155,19 +190,45 @@ void InkUpdater::update()
         const bool ok = m_Download->error() == QNetworkReply::NoError;
         const QString error = m_Download->errorString();
         m_Download = nullptr;
-        m_DownloadFile->write(QByteArray());
+        const bool flushed = m_DownloadFile->flush();
         m_DownloadFile->close();
         const qint64 size = m_DownloadFile->size();
         m_DownloadFile->deleteLater();
         m_DownloadFile = nullptr;
+        const QByteArray sha256 = m_DownloadHash->result().toHex();
+        m_DownloadHash.reset();
 
+        if (m_WriteFailed || (ok && !flushed)) {
+            QFile::remove(path);
+            setState(QStringLiteral("error"), tr("couldn't save the download (is the disk full?)"));
+            return;
+        }
         // A real bundle is several MB; anything tiny is an error page
         if (!ok || size < 1024 * 1024) {
+            QFile::remove(path);
             setState(QStringLiteral("error"), ok ? tr("download was incomplete") : error);
             return;
         }
+        if (!bundleMatches(m_ExpectedSha256, sha256)) {
+            // Damaged on the way, or a newer build was published since the last
+            // check: look again so the next try compares against the right one.
+            qWarning() << "Updater: bundle SHA-256" << sha256 << "does not match the release's" << m_ExpectedSha256;
+            QFile::remove(path);
+            setState(QStringLiteral("error"), tr("the download didn't match the published build; try again"));
+            check();
+            return;
+        }
+        if (m_ExpectedSha256.isEmpty()) {
+            qWarning() << "Updater: the release lists no SHA-256 for the bundle; installing unverified";
+        }
         install(path);
     });
+}
+
+bool InkUpdater::bundleMatches(const QByteArray& expectedSha256, const QByteArray& actualSha256)
+{
+    // A release that lists no digest cannot be checked; one that does must match
+    return expectedSha256.isEmpty() || expectedSha256 == actualSha256.toLower();
 }
 
 void InkUpdater::install(const QString& bundlePath)
