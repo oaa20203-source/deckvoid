@@ -1,5 +1,7 @@
 #include "sdl.h"
 
+#include <QtGlobal>
+
 #include <Limelight.h>
 
 SdlAudioRenderer::SdlAudioRenderer()
@@ -30,7 +32,15 @@ bool SdlAudioRenderer::prepareForPlayback(const OPUS_MULTISTREAM_CONFIGURATION* 
     // to mitigate this issue. Otherwise, we will buffer up to 3 frames of audio which
     // is 15 ms at regular 5 ms frames and 30 ms at 10 ms frames for slow connections.
     // The buffering helps avoid audio underruns due to network jitter.
+#ifdef Q_OS_DARWIN
+    // CoreAudio is the only user of its buffer, so two frames (10 ms at regular
+    // 5 ms frames) are enough; the adaptive target below grows it after underruns.
+    want.samples = SDL_max(480, opusConfig->samplesPerFrame * 2);
+    m_MinTargetDeviceMs = 10;
+    m_TargetDeviceMs = 10;
+#else
     want.samples = SDL_max(480, opusConfig->samplesPerFrame * 3);
+#endif
 
     m_FrameDurationMs = opusConfig->samplesPerFrame / (opusConfig->sampleRate / 1000);
     m_FrameSize = opusConfig->samplesPerFrame *
@@ -173,7 +183,7 @@ void SdlAudioRenderer::logAudioStats(Uint32 pendingMs, Uint32 deviceMs)
         m_CalmSeconds = 0;
     }
     else if (m_StatUnderruns == 0 && ++m_CalmSeconds >= 5) {
-        m_TargetDeviceMs = SDL_max(20u, m_TargetDeviceMs - 5);
+        m_TargetDeviceMs = SDL_max(m_MinTargetDeviceMs, m_TargetDeviceMs - 5);
         m_CalmSeconds = 0;
     }
 

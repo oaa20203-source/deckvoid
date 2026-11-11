@@ -2993,7 +2993,9 @@ void FFmpegVideoDecoder::decoderThreadProc()
                         if (afterLoss) {
                             m_BrightnessChecksLeft--;
                         }
-                        if (m_BlackDetect || afterLoss) {
+                        // Diagnostics only: reading the picture back must never hold
+                        // up a recovery frame in normal use.
+                        if (m_BlackDetect) {
                             checkFrameBrightness(frame, du.frameNumber, afterLoss);
                         }
                         if (afterLoss && ((frame->flags & AV_FRAME_FLAG_CORRUPT) || frame->decode_error_flags)) {
@@ -3202,9 +3204,24 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
 
     SDL_assert(m_CurrentTestMode != TestMode::TestFrameOnly);
 
-    // If this is the first frame, reject anything that's not an IDR frame
-    if (m_FramesIn == 0 && du->frameType != FRAME_TYPE_IDR) {
-        return DR_NEED_IDR;
+    if (m_FramesIn == 0) {
+        // If this is the first frame, reject anything that's not an IDR frame
+        if (du->frameType != FRAME_TYPE_IDR) {
+            return DR_NEED_IDR;
+        }
+
+        // Frames queue up in moonlight-common-c (up to a second of them) while the
+        // window is created and no decoder exists yet. Decoding that queue in order
+        // starts the stream behind and shows as lag and a catch-up burst, so drop
+        // it once and start from a fresh keyframe instead.
+        const int pending = LiGetPendingVideoFrames();
+        if (!m_PyroWaveActive && !m_StartupBacklogFlushed && pending > 1) {
+            m_StartupBacklogFlushed = true;
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                        "Discarding start-up backlog: %d frames queued, oldest %.1f ms old",
+                        pending, (LiGetMicroseconds() - du->enqueueTimeUs) / 1000.0);
+            return DR_NEED_IDR;
+        }
     }
 
     m_VideoGapLog.note(du->receiveTimeUs, (uint32_t)du->frameNumber);

@@ -43,5 +43,6 @@ private:
     // 20 ms queued for the speaker, grow by 10 ms (to 60 ms) in any second where
     // it ran dry twice, and shrink by 5 ms after 5 calm seconds.
     Uint32 m_TargetDeviceMs = 20;
+    Uint32 m_MinTargetDeviceMs = 20;
     Uint32 m_CalmSeconds = 0;
 };

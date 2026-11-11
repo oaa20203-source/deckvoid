@@ -154,8 +154,11 @@ private:
     int m_LastFrameNumber;
     StreamGapLog m_VideoGapLog{"video"};
     int m_BrightnessChecksLeft = 0;
-    // Watch every decoded picture for black (Mac/software frames; off with DECKVOID_BLACK_DETECT=0)
-    bool m_BlackDetect = qgetenv("DECKVOID_BLACK_DETECT") != "0";
+    // The frames queued before the decoder existed are dropped once per decoder
+    bool m_StartupBacklogFlushed = false;
+    // Diagnostics: watch every decoded picture for black (Mac/software frames).
+    // Off unless DECKVOID_BLACK_DETECT=1, because it reads each picture back.
+    bool m_BlackDetect = qgetenv("DECKVOID_BLACK_DETECT") == "1";
     bool m_DecodedBlack = false;
     uint64_t m_DecodedBlackSinceUs = 0;
     void checkFrameBrightness(const AVFrame* frame, int frameNumber, bool afterLoss);
