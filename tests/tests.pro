@@ -13,6 +13,8 @@ contains(CONFIG, tests) {
     SUBDIRS += apollo
     bitratePolicy.file = $$PWD/streaming/bitratepolicy.pro
     SUBDIRS += bitratePolicy
+    inputMode.file = $$PWD/gui/inputmode.pro
+    SUBDIRS += inputMode
     SUBDIRS += updates
     SUBDIRS += vrr
     SUBDIRS += haptics

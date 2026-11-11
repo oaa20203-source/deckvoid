@@ -55,17 +55,18 @@ jobs:
             -pthread -o build-tst_steamcontroller
           ./build-tst_steamcontroller
 
-  # !ink's own suites: the adaptive bitrate policy and the Apollo host rules
-  # (launch verb and replies, permissions, clipboard sync, quick menu, updater versions).
+  # !ink's own suites: the adaptive bitrate policy, the Apollo host rules (launch
+  # verb and replies, permissions, clipboard sync, quick menu, updater versions
+  # and bundle checksum) and the input mode policy.
   test-ink:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install Qt 6
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qt6-base-dev
-      - name: Test the adaptive bitrate policy and the Apollo host rules
+      - name: Test the adaptive bitrate policy, the Apollo host rules and the input mode policy
         run: |
-          for suite in streaming/bitratepolicy:tst_bitratepolicy apollo/apollo:tst_apollo; do
+          for suite in streaming/bitratepolicy:tst_bitratepolicy apollo/apollo:tst_apollo gui/inputmode:tst_inputmode; do
             pro=${suite%%:*}; bin=${suite##*:}
             mkdir -p "build-$bin"
             (cd "build-$bin" && qmake6 "../tests/$pro.pro" && make -j"$(nproc)" && QT_QPA_PLATFORM=offscreen "./$bin")
@@ -95,7 +96,7 @@ jobs:
   # https://github.com/oaa20203-source/deckvoid/releases/latest/download/ink-x86_64.flatpak
   # (GitHub drops the "!" from asset names, so the file is ink-, not !ink-.)
   publish-deck-build:
-    needs: [setup, build-flatpak, test-ink]
+    needs: [setup, build-flatpak, test-ink, test-steam-controller, test-input-motion]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -137,10 +138,14 @@ jobs:
             "Full history: https://github.com/${GH_REPO}/commits/${GITHUB_SHA}")
 
           if gh release view latest-build >/dev/null 2>&1; then
+            # Replace the files before the title: the updater offers a build by the
+            # title and checks the download against the file's SHA-256, so a new
+            # title must never sit on top of the previous build's file.
+            gh release upload latest-build ink-x86_64.flatpak DeckVoid-x86_64.flatpak --clobber
             # Move the tag to this commit so the release matches the file
             gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest-build" -f sha="$GITHUB_SHA" -F force=true
             gh release edit latest-build --title "Latest Steam Deck build ($CI_VERSION)" --notes "$notes" --latest
           else
-            gh release create latest-build --target "$GITHUB_SHA" --title "Latest Steam Deck build ($CI_VERSION)" --notes "$notes" --latest
+            gh release create latest-build --target "$GITHUB_SHA" --title "Latest Steam Deck build ($CI_VERSION)" --notes "$notes" --latest \
+              ink-x86_64.flatpak DeckVoid-x86_64.flatpak
           fi
-          gh release upload latest-build ink-x86_64.flatpak DeckVoid-x86_64.flatpak --clobber
