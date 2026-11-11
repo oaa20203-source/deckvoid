@@ -72,6 +72,27 @@ jobs:
             (cd "build-$bin" && qmake6 "../tests/$pro.pro" && make -j"$(nproc)" && QT_QPA_PLATFORM=offscreen "./$bin")
           done
 
+  # A compile check of the macOS app (Metal renderer, raw mouse input), the same
+  # way it is built by hand: Homebrew's Qt 6 and the prebuilt libraries from
+  # setup-deps.py. It does not gate the Deck release.
+  build-macos:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - name: Install Qt 6
+        run: brew install qt
+      - name: Download the prebuilt libraries
+        run: python3 setup-deps.py
+      - name: Build the app
+        run: |
+          mkdir build-mac && cd build-mac
+          "$(brew --prefix)/bin/qmake6" ../moonlight-qt.pro CONFIG+=release
+          make -j"$(sysctl -n hw.ncpu)"
+          test -x 'app/!ink.app/Contents/MacOS/!ink'
+
   setup:
     runs-on: ubuntu-latest
     outputs:
