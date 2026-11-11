@@ -183,12 +183,14 @@ Item {
     function openPairPreview() { openPair(hasPc ? pc.name : "Gaming PC", "4719") }
 
     function primary() {
-        if (!hasPc) addPcDialog.open()
+        if (!hasPc) window.showAddPc()
         else if (devReady || pc.statusUnknown) return
         else if (!pc.online) { if (pc.wakeable) computerModel.wakeComputer(pc.idx) }
         else if (!pc.paired) startPairing()
         else launch(desktopApp)
     }
+
+    Binding { target: window; property: "pcOff"; value: home.pcOff }
 
     Keys.onReturnPressed: primary()
     Keys.onEnterPressed: primary()
@@ -346,7 +348,7 @@ Item {
             color: Theme.glassFaint
             font.family: Theme.sansFont
             font.pixelSize: 1.9 * cq
-            MouseArea { anchors.fill: parent; anchors.margins: -0.6 * home.cq; cursorShape: Qt.PointingHandCursor; onClicked: addPcDialog.open() }
+            MouseArea { anchors.fill: parent; anchors.margins: -0.6 * home.cq; cursorShape: Qt.PointingHandCursor; onClicked: window.showAddPc() }
         }
     }
 

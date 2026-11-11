@@ -35,7 +35,9 @@ ApplicationWindow {
     // Room the older screens leave for those buttons
     readonly property int titleInset: Qt.platform.os === "osx" ? 28 : 0
     // Screens not yet moved to the glass design keep the old header and its tabs
-    readonly property bool legacyChrome: stackView.currentItem instanceof SettingsView
+    readonly property bool legacyChrome: stackView.currentItem instanceof ClassicSettingsView
+    // Set by the home screen: the glass screens turn grey while the PC is off
+    property bool pcOff: false
 
     // This function runs prior to creation of the initial StackView item
     function doEarlyInit() {
@@ -106,6 +108,9 @@ ApplicationWindow {
             }
             else if (parts[0] === "dialog") {
                 devDialog.open()
+            }
+            else if (parts[0] === "addpc") {
+                showAddPc()
             }
             else if (parts[0] === "ready" && stackView.currentItem.devReady !== undefined) {
                 stackView.currentItem.devReady = true
@@ -301,7 +306,7 @@ ApplicationWindow {
     }
 
     // Tabs: Hosts is the root of the stack, Settings is pushed on top.
-    readonly property bool settingsTab: stackView.currentItem instanceof SettingsView
+    readonly property bool settingsTab: (stackView.currentItem instanceof SettingsView) || (stackView.currentItem instanceof ClassicSettingsView)
     function showHosts() {
         if (stackView.depth > 1) {
             stackView.pop(null)
@@ -309,6 +314,13 @@ ApplicationWindow {
     }
     function showSettings() {
         navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
+    }
+    // The previous settings screen: calibration, custom frame rates and VRR tuning are still only there
+    function showClassicSettings() {
+        navigateTo("qrc:/gui/ClassicSettingsView.qml", ClassicSettingsView)
+    }
+    function showAddPc() {
+        navigateTo("qrc:/gui/AddPcView.qml", AddPcView)
     }
 
     // Header: a row of ruled cells (docs/design/KIT.md, "Fact header"):
@@ -414,7 +426,7 @@ ApplicationWindow {
             }
         }
 
-        Shortcut { sequence: StandardKey.New; onActivated: addPcDialog.open() }
+        Shortcut { sequence: StandardKey.New; onActivated: showAddPc() }
         Shortcut { sequence: StandardKey.Preferences; onActivated: showSettings() }
         Shortcut { sequence: StandardKey.HelpContents; onActivated: Qt.openUrlExternally("https://github.com/oaa20203-source/deckvoid#readme") }
     }
