@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>!ink home, soft flutes</title>
+<style>
+  :root { --border: #d8d2c8; --font-sans: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif; --text-secondary: #5A4E45; }
+  body { margin: 0; padding: 16px; background: #e4dfd7; font-family: var(--font-sans); }
+  #wrap { max-width: 1180px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div id="wrap">
+<!-- widget body starts -->
+<style>
+#win{background:#fff;color:#2A2420;border-radius:12px;border:0.5px solid var(--border);aspect-ratio:16/10;overflow:hidden;position:relative;container-type:inline-size;font-family:var(--font-sans);--fl:1.6cqw}
+#win .lights{position:absolute;left:1.8cqw;top:1.7cqw;width:1.3cqw;height:1.3cqw;border-radius:50%;background:#E6DFD4;box-shadow:2.2cqw 0 0 #E6DFD4,4.4cqw 0 0 #E6DFD4}
+#side{position:absolute;left:1.8cqw;top:4.4cqw;bottom:1.8cqw;width:21.1cqw;display:flex;flex-direction:column}
+#side .hd{background:#2A2420;color:#fff;border-radius:1.5cqw;padding:1cqw 1.5cqw;font-size:13px;font-size:1.9cqw}
+#side .in{padding:0 1.5cqw;display:flex;flex-direction:column;flex:1}
+#main{position:absolute;left:24.3%;right:1.8cqw;top:4.4cqw;bottom:1.8cqw;display:grid;gap:1.4cqw;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1.6fr 1fr}
+#win .t{border-radius:2.2cqw;position:relative;overflow:hidden;background:#EFE6D2}
+#win .t canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#win .p{border-radius:2.2cqw;background:#FAF8F5;position:relative}
+#win .ap{cursor:pointer}
+#win .p .lb{color:#6B5F55}
+#bar{width:55%;height:100%;position:relative;background:linear-gradient(90deg,#F78A1F,#7FAA8C)}
+#bar:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#878787,#C3C3C3);opacity:0;transition:opacity .5s}
+#win.asleep #bar:after{opacity:1}
+#win .x{position:absolute;left:2.2cqw;bottom:1.9cqw;right:1cqw;z-index:1}
+#win .s{font-size:11px;font-size:1.6cqw;display:block}
+#win .h{font-weight:500;font-size:17px;font-size:2.5cqw;letter-spacing:-.02em;white-space:nowrap}
+#win .pill{display:inline-block;background:rgba(255,255,255,.85);border-radius:99px;padding:.8cqw 2.2cqw;font-size:12px;font-size:1.8cqw;margin-top:1.2cqw;white-space:nowrap}
+#win .row{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-size:1.6cqw;padding:.85cqw 0;border-bottom:0.5px solid #EEEAE4;white-space:nowrap}
+#win .row span:first-child{color:#6B5F55}
+#win .tg{width:3.2cqw;height:1.8cqw;border-radius:99px;background:#E6DFD4;position:relative;display:inline-block}
+#win .tg:after{content:"";position:absolute;top:.25cqw;left:.25cqw;width:1.3cqw;height:1.3cqw;border-radius:50%;background:#fff}
+#win .tg.on{background:#2A2420}
+#win .tg.on:after{left:auto;right:.25cqw}
+#ctl{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;font-size:14px;color:var(--text-secondary)}
+#ctl input{flex:1;min-width:90px}
+</style>
+<div id="win">
+  <div class="lights"></div>
+  <div id="side">
+    <div class="hd">!ink</div>
+    <div class="in">
+      <div class="row" style="margin-top:1.2cqw"><span>Frame rate</span><span>120 fps</span></div>
+      <div class="row" style="border-bottom:0;padding-bottom:.3cqw"><span>Bitrate</span><span>55 Mbps</span></div>
+      <div style="height:.5cqw;border-radius:99px;background:#EEEAE4;overflow:hidden;margin-bottom:.9cqw"><div id="bar"></div></div>
+      <div class="row" style="border-top:0.5px solid #EEEAE4"><span>Adaptive bitrate</span><span class="tg on"></span></div>
+      <div class="s" style="margin-top:1.4cqw">All settings &rarr;</div>
+      <div style="margin-top:auto;color:#8A7D70;padding-bottom:.6cqw;font-size:13px;font-size:1.9cqw">+&nbsp; Add a PC</div>
+    </div>
+  </div>
+  <div id="main">
+    <div class="t" style="grid-column:1/4"><canvas id="g1"></canvas>
+      <div class="x"><span class="s" id="st">Ready</span><span class="h" style="font-size:32px;font-size:4.9cqw;letter-spacing:-.035em;line-height:1.05">Gaming PC</span><br><span class="pill" id="go">Stream desktop</span></div>
+    </div>
+    <div class="t ap"><canvas id="g2"></canvas><div class="x"><span class="s lb">Last played · 2 h ago</span><span class="h">Hades II</span></div></div>
+    <div class="p ap"><div class="x"><span class="s lb">App</span><span class="h">Steam</span></div></div>
+    <div class="p ap"><div class="x"><span class="s lb">App</span><span class="h">Minecraft</span></div></div>
+  </div>
+</div>
+<div id="ctl">
+  <button id="b1">PC ready</button><button id="b2">PC asleep</button>
+  <label for="fw">Flute width</label><input type="range" id="fw" min="6" max="40" step="1" value="16">
+  <label for="sp">Speed</label><input type="range" id="sp" min="0" max="100" step="1" value="62">
+</div>
+<script>
+(function(){
+// Light palette: orange, sage, a blue edge and amber, over cream. When the PC is asleep the same
+// shapes keep moving in greys chosen to stay distinct from each other.
+var PAL=[[247,138,31],[127,170,140],[60,140,175],[240,194,74]],GREY=[135,195,70,220],BASE=[239,230,210],BASEGREY=242;
+var dpr=Math.min(window.devicePixelRatio||1,3),win=document.getElementById('win'),mix=0,target=0;
+function val(id,d){var e=document.getElementById(id);return e?+e.value:d;}
+function rgb(c,g){return [0,1,2].map(function(j){return Math.round(c[j]+(g-c[j])*mix);}).join(',');}
+// Flutes at the screen's full pixel density: the same soft light-to-shadow profile as before, but each
+// flute is a whole number of screen pixels wide and smoothed per pixel, so all of them land identically.
+function flutes(P){var s=document.createElement('canvas');s.width=P;s.height=1;var c=s.getContext('2d'),m=c.createImageData(P,1),N=8;
+  for(var i=0;i<P;i++){var R=0,G=0,Bl=0,A=0;
+    for(var k=0;k<N;k++){var u=(i+(k+.5)/N)/P,w,d;
+      if(u<.45){w=.5*(1-u/.45);d=0;}else if(u<.91){w=0;d=.12*(u-.45)/.46;}else{var q=(u-.91)/.09;w=.5*q;d=.12*(1-q);}
+      var dk=d*(1-w);R+=255*w+40*dk;G+=255*w+50*dk;Bl+=255*w+40*dk;A+=w+dk;}
+    var j=i*4;m.data[j]=A?R/A:0;m.data[j+1]=A?G/A:0;m.data[j+2]=A?Bl/A:0;m.data[j+3]=A/N*255;}
+  c.putImageData(m,0,0);return s;}
+function glass(id,blobs,seed){var c=document.getElementById(id);return {c:c,x:c.getContext('2d'),b:blobs,s:seed,P:0,pat:null};}
+function draw(g,t){var c=g.c,w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);if(!w||!h)return;
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h;g.P=0;}
+  var x=g.x;x.fillStyle='rgb('+rgb(BASE,BASEGREY)+')';x.fillRect(0,0,w,h);
+  for(var i=0;i<g.b.length;i++){var b=g.b[i],k=rgb(PAL[b[0]],GREY[b[0]]),
+      cx=(b[1]+.22*Math.sin(t*(.23+.05*i)+g.s+i*1.7))*w,cy=(b[2]+.22*Math.cos(t*(.19+.04*i)+g.s*1.3+i*2.1))*h,
+      gr=x.createRadialGradient(cx,cy,0,cx,cy,b[3]*w);
+    gr.addColorStop(0,'rgba('+k+',1)');gr.addColorStop(.38,'rgba('+k+',.9)');gr.addColorStop(1,'rgba('+k+',0)');x.fillStyle=gr;x.fillRect(0,0,w,h);}
+  var P=Math.max(4,Math.round(win.clientWidth*val('fw',16)/1000*dpr));
+  if(P!==g.P){g.pat=x.createPattern(flutes(P),'repeat');g.P=P;}
+  x.fillStyle=g.pat;x.fillRect(0,0,w,h);}
+var G=[glass('g1',[[0,.32,.68,.72],[1,.82,.22,.55],[2,.04,.10,.34],[0,.68,.88,.45]],0),
+       glass('g2',[[1,.60,.42,.78],[3,.10,.90,.46],[0,.96,.96,.30]],2.4)],T=0,last=0;
+function loop(ms){var dt=(ms-last)/1000;last=ms;if(dt>.1)dt=.016;T+=dt*val('sp',62)/25;mix+=(target-mix)*Math.min(1,dt*4);
+  draw(G[0],T);draw(G[1],T);requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+function state(asleep){target=asleep?1:0;win.className=asleep?'asleep':'';document.getElementById('st').textContent=asleep?'Asleep':'Ready';
+  document.getElementById('go').textContent=asleep?'Wake':'Stream desktop';}
+document.getElementById('b1').onclick=function(){state(false);};document.getElementById('b2').onclick=function(){state(true);};
+// The glass marks the app used most recently, which also moves to the far left
+var aps=[].slice.call(document.querySelectorAll('#win .ap')),g2=document.getElementById('g2');
+aps.forEach(function(a){a.onclick=function(){aps.forEach(function(o){o.className='p ap';o.querySelector('.lb').textContent='App';});
+  a.className='t ap';a.insertBefore(g2,a.firstChild);a.querySelector('.lb').textContent='Last played · just now';
+  var first=document.querySelector('#win .ap');if(first!==a)a.parentNode.insertBefore(a,first);};});
+})();
+</script>
+<!-- widget body ends -->
+</div>
+</body>
+</html>

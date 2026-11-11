@@ -168,6 +168,7 @@ public:
     // Calibrated PyroWave frame pace (0 = let the host choose); see PyroWaveLink::searchPace.
     Q_PROPERTY(int pyroWavePaceMbps MEMBER pyroWavePaceMbps NOTIFY bitrateChanged)
     Q_PROPERTY(bool unlockBitrate MEMBER unlockBitrate NOTIFY unlockBitrateChanged)
+    Q_PROPERTY(bool adaptiveBitrate MEMBER adaptiveBitrate NOTIFY adaptiveBitrateChanged)
     Q_PROPERTY(bool autoAdjustBitrate MEMBER autoAdjustBitrate NOTIFY autoAdjustBitrateChanged)
     Q_PROPERTY(bool enableVsync MEMBER enableVsync NOTIFY enableVsyncChanged)
     Q_PROPERTY(bool enableVrr MEMBER enableVrr NOTIFY enableVrrChanged)
@@ -245,6 +246,8 @@ public:
     int fps;
     int bitrateKbps;
     bool unlockBitrate;
+    // Lower and raise the bitrate with the link while streaming (BitrateAdapter)
+    bool adaptiveBitrate;
     bool autoAdjustBitrate;
     bool enableVsync;
     bool enableVrr;
@@ -316,6 +319,7 @@ signals:
     void displayModeChanged();
     void bitrateChanged();
     void unlockBitrateChanged();
+    void adaptiveBitrateChanged();
     void autoAdjustBitrateChanged();
     void enableVsyncChanged();
     void enableVrrChanged();

@@ -1094,7 +1094,7 @@ int main(int argc, char *argv[])
 
     switch (commandLineParserResult) {
     case GlobalCommandLineParser::NormalStartRequested:
-        initialView = "qrc:/gui/PcView.qml";
+        initialView = "qrc:/gui/HomeView.qml";
         break;
     case GlobalCommandLineParser::StreamRequested:
         {

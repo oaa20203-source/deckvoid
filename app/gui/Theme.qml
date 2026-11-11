@@ -92,4 +92,16 @@ QtObject {
     readonly property int cardPadding: 18
     readonly property int statusStrip: 7
     readonly property int statusDot: 11
+
+    // Glass interface (design/mockups): white window, warm near-black text, off-white
+    // panels, and orange and sage as the only colours outside the glass itself.
+    readonly property color glassText: "#2A2420"
+    readonly property color glassMuted: "#6B5F55"
+    readonly property color glassFaint: "#8A7D70"
+    readonly property color glassPanel: "#FAF8F5"
+    readonly property color glassLine: "#EEEAE4"
+    readonly property color glassPillBorder: "#E6DFD4"
+    readonly property color glassTrack: "#E6DFD4"
+    readonly property color glassOrange: "#F78A1F"
+    readonly property color glassSage: "#7FAA8C"
 }

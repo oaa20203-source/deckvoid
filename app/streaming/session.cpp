@@ -2131,7 +2131,7 @@ bool Session::startConnectionAsync()
     m_HostLaunchWarning = LaunchWarning::text(launchWarning);
 
     // Adapt the bitrate to the link (PyroWave has its own rate control)
-    if (!(m_SupportedVideoFormats & VIDEO_FORMAT_MASK_PYROWAVE)) {
+    if (!(m_SupportedVideoFormats & VIDEO_FORMAT_MASK_PYROWAVE) && m_Preferences->adaptiveBitrate) {
         BitrateAdapter::start(m_Computer, m_StreamConfig.bitrate, m_StreamConfig.fps);
     }
     StreamGapLog::logClockAnchor();

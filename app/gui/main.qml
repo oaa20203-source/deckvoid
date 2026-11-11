@@ -23,9 +23,19 @@ ApplicationWindow {
     property bool clearOnBack: false
 
     id: window
-    color: Theme.background
+    // The glass screens are white; the older screens that are still in use keep their paper
+    color: legacyChrome ? Theme.background : "#FFFFFF"
     width: devWindowSize ? devWindowSize.width : 1280
-    height: devWindowSize ? devWindowSize.height : 600
+    height: devWindowSize ? devWindowSize.height : 800
+
+    // macOS: draw the app under a transparent title bar, so the close, minimise and
+    // maximise buttons sit inside the app instead of in a bar of their own (Qt 6.9+).
+    flags: Qt.platform.os === "osx" ? (Qt.Window | (Qt.ExpandedClientAreaHint || 0) | (Qt.NoTitleBarBackgroundHint || 0))
+                                    : Qt.Window
+    // Room the older screens leave for those buttons
+    readonly property int titleInset: Qt.platform.os === "osx" ? 28 : 0
+    // Screens not yet moved to the glass design keep the old header and its tabs
+    readonly property bool legacyChrome: stackView.currentItem instanceof SettingsView
 
     // This function runs prior to creation of the initial StackView item
     function doEarlyInit() {
@@ -43,6 +53,12 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        // With the title bar transparent, Qt pads the content down by its height;
+        // the glass screens draw under it and leave their own room for the buttons.
+        if (window.topPadding !== undefined) {
+            window.topPadding = 0
+        }
+
         // Show the window according to the user's preferences
         if (SystemProperties.hasDesktopEnvironment) {
             if (StreamingPreferences.uiDisplayMode == StreamingPreferences.UI_MAXIMIZED) {
@@ -90,6 +106,9 @@ ApplicationWindow {
             }
             else if (parts[0] === "dialog") {
                 devDialog.open()
+            }
+            else if (parts[0] === "ready" && stackView.currentItem.devReady !== undefined) {
+                stackView.currentItem.devReady = true
             }
         }
     }
@@ -296,7 +315,8 @@ ApplicationWindow {
     // name, the PCs / Settings tabs, and one cell of facts from the current page.
     header: Rectangle {
         id: toolBar
-        height: Theme.headerHeight
+        height: window.legacyChrome ? Theme.headerHeight + window.titleInset : 0
+        clip: true
         color: Theme.paper
         readonly property string fact: stackView.currentItem && stackView.currentItem.headerFact !== undefined
                                        ? stackView.currentItem.headerFact : ""
@@ -305,7 +325,8 @@ ApplicationWindow {
 
         Row {
             id: cells
-            height: parent.height - 1
+            y: window.titleInset
+            height: Theme.headerHeight - 1
 
             Item {
                 width: 180; height: parent.height

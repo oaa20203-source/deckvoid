@@ -9,6 +9,10 @@
         <file>gui/HostCard.qml</file>
         <file>gui/AddPcCard.qml</file>
         <file>gui/PcView.qml</file>
+        <file>gui/HomeView.qml</file>
+        <file>gui/PairView.qml</file>
+        <file>gui/FlutedGlass.qml</file>
+        <file>gui/shaders/fluted.frag.qsb</file>
         <file>gui/AppView.qml</file>
         <file>gui/SettingsView.qml</file>
         <file>gui/CalibrationButton.qml</file>

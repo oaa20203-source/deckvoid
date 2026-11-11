@@ -27,6 +27,7 @@
 #define SER_FPS "fps"
 #define SER_BITRATE "bitrate"
 #define SER_UNLOCK_BITRATE "unlockbitrate"
+#define SER_ADAPTIVE_BITRATE "adaptivebitrate"
 #define SER_AUTOADJUSTBITRATE "autoadjustbitrate"
 #define SER_FULLSCREEN "fullscreen"
 #define SER_VSYNC "vsync"
@@ -164,6 +165,7 @@ void StreamingPreferences::reload()
     enableYUV444 = settings.value(SER_YUV444, false).toBool();
     bitrateKbps = settings.value(SER_BITRATE, getDefaultBitrate(width, height, fps, enableYUV444)).toInt();
     unlockBitrate = settings.value(SER_UNLOCK_BITRATE, false).toBool();
+    adaptiveBitrate = settings.value(SER_ADAPTIVE_BITRATE, true).toBool();
     autoAdjustBitrate = settings.value(SER_AUTOADJUSTBITRATE, true).toBool();
     enableVsync = settings.value(SER_VSYNC, true).toBool();
     enableVrr = settings.value(SER_ENABLEVRR, false).toBool();
@@ -454,6 +456,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_FPS, fps);
     settings.setValue(SER_BITRATE, bitrateKbps);
     settings.setValue(SER_UNLOCK_BITRATE, unlockBitrate);
+    settings.setValue(SER_ADAPTIVE_BITRATE, adaptiveBitrate);
     settings.setValue(SER_AUTOADJUSTBITRATE, autoAdjustBitrate);
     settings.setValue(SER_VSYNC, enableVsync);
     settings.setValue(SER_ENABLEVRR, enableVrr);

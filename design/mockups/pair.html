@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>!ink pairing mockup</title>
+<style>
+  :root { --border: #d8d2c8; --font-sans: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif; --text-secondary: #5A4E45; }
+  body { margin: 0; padding: 16px; background: #e4dfd7; font-family: var(--font-sans); }
+  #wrap { max-width: 1180px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div id="wrap">
+<!-- widget body starts -->
+<style>
+#win{background:#fff;color:#2A2420;border-radius:12px;border:0.5px solid var(--border);aspect-ratio:16/10;overflow:hidden;position:relative;container-type:inline-size;font-family:var(--font-sans)}
+#win .lights{position:absolute;left:1.8cqw;top:1.7cqw;width:1.3cqw;height:1.3cqw;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:2.2cqw 0 0 rgba(255,255,255,.8),4.4cqw 0 0 rgba(255,255,255,.8)}
+#win .hm{position:absolute;left:1.8cqw;top:4.4cqw;background:rgba(255,255,255,.85);border-radius:99px;padding:.8cqw 1.8cqw;font-size:13px;font-size:1.9cqw;cursor:pointer}
+#win .t{position:absolute;inset:0;overflow:hidden;background:#EFE6D2;display:flex;align-items:center;justify-content:center}
+#win .t canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#card{position:relative;z-index:1;width:44cqw;background:#FAF8F5;border-radius:2.2cqw;padding:2.4cqw 3cqw 2.6cqw;box-sizing:border-box;text-align:center}
+#win .s{font-size:11px;font-size:1.6cqw;display:block}
+#win .mu{color:#6B5F55}
+#win .h{font-weight:500;font-size:20px;font-size:3cqw;letter-spacing:-.025em;line-height:1.15;margin:.4cqw 0 1.8cqw;display:block}
+#win .dg{display:flex;gap:1.2cqw;justify-content:center;position:relative;margin-bottom:1.8cqw}
+#win .dg b{width:6cqw;height:7.2cqw;border-radius:1.4cqw;background:#fff;border:0.5px solid #E6DFD4;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:26px;font-size:3.8cqw}
+#win .pl{display:inline-block;border-radius:99px;padding:.75cqw 1.9cqw;font-size:11px;font-size:1.6cqw;cursor:pointer;background:#fff;border:0.5px solid #E6DFD4}
+</style>
+<div id="win">
+  <div class="t"><canvas id="g1"></canvas>
+    <div id="card">
+      <span class="s mu">Pairing with Gaming PC</span>
+      <span class="h">Enter this PIN on your PC</span>
+      <div class="dg"><b>4</b><b>7</b><b>1</b><b>9</b></div>
+      <span class="s mu">Type it into the Apollo, Vibepollo or Sunshine page on the PC.</span>
+      <span class="s" style="margin:1.2cqw 0 1.6cqw">Waiting for the PC…</span>
+      <span class="pl">Cancel</span>
+    </div>
+  </div>
+  <div class="lights"></div>
+  <div class="hm">&larr;&nbsp; Home</div>
+</div>
+<script>
+(function(){
+var win=document.getElementById('win');
+
+var dpr=Math.min(window.devicePixelRatio||1,3),PAL=[[247,138,31],[127,170,140],[60,140,175],[240,194,74]],SPEED=62;
+function flutes(P){var s=document.createElement('canvas');s.width=P;s.height=1;var c=s.getContext('2d'),m=c.createImageData(P,1),N=8;
+  for(var i=0;i<P;i++){var R=0,G=0,Bl=0,A=0;
+    for(var k=0;k<N;k++){var u=(i+(k+.5)/N)/P,w,d;
+      if(u<.45){w=.5*(1-u/.45);d=0;}else if(u<.91){w=0;d=.12*(u-.45)/.46;}else{var q=(u-.91)/.09;w=.5*q;d=.12*(1-q);}
+      var dk=d*(1-w);R+=255*w+40*dk;G+=255*w+50*dk;Bl+=255*w+40*dk;A+=w+dk;}
+    var j=i*4;m.data[j]=A?R/A:0;m.data[j+1]=A?G/A:0;m.data[j+2]=A?Bl/A:0;m.data[j+3]=A/N*255;}
+  c.putImageData(m,0,0);return s;}
+var c=document.getElementById('g1'),x=c.getContext('2d'),B=[[0,.30,.70,.60],[1,.82,.25,.50],[2,.05,.10,.30],[3,.60,.95,.30],[0,.95,.85,.34]],PP=0,pat=null;
+function draw(t){var w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);if(!w||!h)return;
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h;PP=0;}
+  x.fillStyle='#EFE6D2';x.fillRect(0,0,w,h);
+  for(var i=0;i<B.length;i++){var b=B[i],k=PAL[b[0]].join(','),
+      cx=(b[1]+.20*Math.sin(t*(.23+.05*i)+i*1.7))*w,cy=(b[2]+.22*Math.cos(t*(.19+.04*i)+i*2.1))*h,
+      gr=x.createRadialGradient(cx,cy,0,cx,cy,b[3]*w);
+    gr.addColorStop(0,'rgba('+k+',1)');gr.addColorStop(.38,'rgba('+k+',.9)');gr.addColorStop(1,'rgba('+k+',0)');x.fillStyle=gr;x.fillRect(0,0,w,h);}
+  var P=Math.max(4,Math.round(win.clientWidth*.016*dpr));
+  if(P!==PP){pat=x.createPattern(flutes(P),'repeat');PP=P;}
+  x.fillStyle=pat;x.fillRect(0,0,w,h);}
+var T=0,last=0;
+function loop(ms){var dt=(ms-last)/1000;last=ms;if(dt>.1)dt=.016;T+=dt*SPEED/25;draw(T);requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+})();
+</script>
+<!-- widget body ends -->
+</div>
+</body>
+</html>
